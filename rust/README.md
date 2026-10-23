@@ -4,6 +4,7 @@
 [![docs.rs](https://img.shields.io/docsrs/s3pe)](https://docs.rs/s3pe)
 [![CI](https://github.com/StrategicProjects/s3pe/actions/workflows/ci.yml/badge.svg)](https://github.com/StrategicProjects/s3pe/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.23606939.svg)](https://doi.org/10.5281/zenodo.23606939)
 
 A small, dependable S3 client and command line, made for **s3.pe.gov.br**
 (the [Garage](https://garagehq.deuxfleurs.fr) object store of the State of

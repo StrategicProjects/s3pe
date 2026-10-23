@@ -1,5 +1,7 @@
 # s3pe
 
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.23606939.svg)](https://doi.org/10.5281/zenodo.23606939)
+
 Leia e grave dados no **s3.pe.gov.br**, o armazenamento de objetos S3 do
 Estado de Pernambuco (um servidor [Garage](https://garagehq.deuxfleurs.fr)),
 ou em qualquer S3. Os mesmos nove verbos em R, Python, Rust e Go, com os

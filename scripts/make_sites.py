@@ -57,7 +57,8 @@ EDITIONS = {
         badges=[("https://crates.io/crates/s3pe", "crates.io", "https://img.shields.io/crates/v/s3pe.svg"),
                 ("https://docs.rs/s3pe", "docs.rs", "https://img.shields.io/docsrs/s3pe"),
                 (GH + "/actions/workflows/ci.yml", "CI", GH + "/actions/workflows/ci.yml/badge.svg"),
-                (GH + "/blob/main/LICENSE", "License MIT", "https://img.shields.io/badge/license-MIT-blue.svg")],
+                (GH + "/blob/main/LICENSE", "License MIT", "https://img.shields.io/badge/license-MIT-blue.svg"),
+                ("https://doi.org/10.5281/zenodo.23606939", "DOI", "https://zenodo.org/badge/DOI/10.5281/zenodo.23606939.svg")],
         api="api/s3pe/", api_label="API reference", api_ext="https://docs.rs/s3pe",
         term_title="main.rs", term="""<span class="c-kw">use</span> s3pe::{<span class="c-cmd">read_s3</span>, <span class="c-cmd">upload_s3</span>, <span class="c-cmd">list_s3</span>};
 
@@ -123,6 +124,7 @@ s3.<span class="c-cmd">download</span>(<span class="c-str">"dados/pe.geojson"</s
         badges=[("https://pkg.go.dev/github.com/StrategicProjects/s3pe", "Go Reference", "https://pkg.go.dev/badge/github.com/StrategicProjects/s3pe.svg"),
                 (GH + "/actions/workflows/ci.yml", "CI", GH + "/actions/workflows/ci.yml/badge.svg"),
                 (GH + "/blob/main/LICENSE", "License MIT", "https://img.shields.io/badge/license-MIT-blue.svg"),
+                ("https://doi.org/10.5281/zenodo.23606939", "DOI", "https://zenodo.org/badge/DOI/10.5281/zenodo.23606939.svg"),
                 (None, "No dependencies", "https://img.shields.io/badge/dependencies-none-brightgreen.svg")],
         api="https://pkg.go.dev/github.com/StrategicProjects/s3pe", api_label="Reference", api_ext=None,
         term_title="main.go", term="""<span class="c-kw">import</span> <span class="c-str">"github.com/StrategicProjects/s3pe"</span>
@@ -187,6 +189,7 @@ s3, _ = s3pe.<span class="c-cmd">New</span>(s3pe.<span class="c-ty">Config</span
         badges=[("https://pypi.org/project/s3pe/", "PyPI", "https://img.shields.io/pypi/v/s3pe.svg"),
                 (GH + "/actions/workflows/ci.yml", "CI", GH + "/actions/workflows/ci.yml/badge.svg"),
                 (GH + "/blob/main/LICENSE", "License MIT", "https://img.shields.io/badge/license-MIT-blue.svg"),
+                ("https://doi.org/10.5281/zenodo.23606939", "DOI", "https://zenodo.org/badge/DOI/10.5281/zenodo.23606939.svg"),
                 (None, "Python 3.9+", "https://img.shields.io/badge/python-3.9%2B-informational.svg")],
         api="api/", api_label="API reference", api_ext=None,
         term_title="analysis.py", term="""<span class="c-kw">import</span> s3pe

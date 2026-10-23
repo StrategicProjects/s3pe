@@ -3,6 +3,7 @@
 <!-- badges: start -->
 [![R-CMD-check](https://github.com/StrategicProjects/s3pe/actions/workflows/ci.yml/badge.svg)](https://github.com/StrategicProjects/s3pe/actions/workflows/ci.yml)
 [![CRAN status](https://www.r-pkg.org/badges/version/s3pe)](https://CRAN.R-project.org/package=s3pe)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.23606939.svg)](https://doi.org/10.5281/zenodo.23606939)
 <!-- badges: end -->
 
 Read and write data on the S3 object store of the State of Pernambuco,

@@ -6,6 +6,7 @@
 [![CRAN](https://www.r-pkg.org/badges/version/s3pe)](https://CRAN.R-project.org/package=s3pe)
 [![Go Reference](https://pkg.go.dev/badge/github.com/StrategicProjects/s3pe.svg)](https://pkg.go.dev/github.com/StrategicProjects/s3pe)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.23606939.svg)](https://doi.org/10.5281/zenodo.23606939)
 
 Read and write data on **s3.pe.gov.br**, the S3 object store of the State of
 Pernambuco, Brazil (a [Garage](https://garagehq.deuxfleurs.fr) server), or on

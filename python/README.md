@@ -3,6 +3,7 @@
 [![PyPI](https://img.shields.io/pypi/v/s3pe.svg)](https://pypi.org/project/s3pe/)
 [![CI](https://github.com/StrategicProjects/s3pe/actions/workflows/ci.yml/badge.svg)](https://github.com/StrategicProjects/s3pe/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/StrategicProjects/s3pe/blob/main/LICENSE)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.23606939.svg)](https://doi.org/10.5281/zenodo.23606939)
 
 Read and write data on **s3.pe.gov.br**, the S3 object store of the State
 of Pernambuco (a [Garage](https://garagehq.deuxfleurs.fr) server), or on
