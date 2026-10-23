@@ -9,8 +9,8 @@ of Pernambuco (a [Garage](https://garagehq.deuxfleurs.fr) server), or on
 any S3-style store. Nine verbs, no configuration beyond two environment
 variables, and a Rust core that signs, retries and checks every transfer.
 
-**Website:** <https://strategicprojects.github.io/s3pe/> ·
-**API reference:** <https://strategicprojects.github.io/s3pe/python/> ·
+**Website:** <https://strategicprojects.github.io/s3pe/python/> ·
+**API reference:** <https://strategicprojects.github.io/s3pe/python/api/> ·
 [Português](#em-português)
 
 ## Install
@@ -92,6 +92,10 @@ All errors derive from `s3pe.S3Error`: `NotFoundError` (404),
 bytes that arrived differ from the bytes sent). `exists_s3` and `head_s3`
 turn 404 into `False` / `None`.
 
+### What happens in every call
+
+<img src="https://raw.githubusercontent.com/StrategicProjects/s3pe/main/site/assets/request-flow.svg" alt="Resolve the key, hash the payload, sign with SigV4, send, retry on 429 and 5xx, verify the ETag and Content-Length; success logs one line, errors are typed." width="100%" />
+
 ### Dependable by default
 
 - SigV4 signatures over the real SHA-256 of the payload, path-style URLs.
@@ -102,6 +106,10 @@ turn 404 into `False` / `None`.
   MD5, the MD5 of what arrived.
 - Files are streamed to a `.s3pe-part` file and renamed when complete.
 - The Rust core releases the GIL during transfers.
+
+## Architecture
+
+<img src="https://raw.githubusercontent.com/StrategicProjects/s3pe/main/site/assets/architecture.svg" alt="The Python package is a PyO3 binding on the Rust crate; R and Go have their own implementations of the same specification. All talk to s3.pe.gov.br or any S3 store." width="100%" />
 
 ## Em português
 

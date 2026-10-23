@@ -19,12 +19,14 @@ navbar:
     editions:
       text: Other editions
       menu:
+      - text: All editions
+        href: https://strategicprojects.github.io/s3pe/
       - text: Python
         href: https://strategicprojects.github.io/s3pe/python/
       - text: Rust
-        href: https://docs.rs/s3pe
+        href: https://strategicprojects.github.io/s3pe/rust/
       - text: Go
-        href: https://pkg.go.dev/github.com/StrategicProjects/s3pe
+        href: https://strategicprojects.github.io/s3pe/go/
 
 reference:
 - title: Read and write

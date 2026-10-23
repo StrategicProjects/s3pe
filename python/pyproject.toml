@@ -44,8 +44,8 @@ pandas = ["pandas>=1.5", "pyarrow>=10"]
 test = ["pytest>=7"]
 
 [project.urls]
-Homepage = "https://strategicprojects.github.io/s3pe/"
-Documentation = "https://strategicprojects.github.io/s3pe/python/"
+Homepage = "https://strategicprojects.github.io/s3pe/python/"
+Documentation = "https://strategicprojects.github.io/s3pe/python/api/"
 Source = "https://github.com/StrategicProjects/s3pe"
 Issues = "https://github.com/StrategicProjects/s3pe/issues"
 "Rust crate" = "https://crates.io/crates/s3pe"

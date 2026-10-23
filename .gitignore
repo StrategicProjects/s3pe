@@ -19,8 +19,8 @@ r/*.tar.gz
 r/.Rproj.user/
 # site build
 site/r/
-site/rust/
-site/python/
+site/rust/api/
+site/python/api/
 # local
 .DS_Store
 CLAUDE.md

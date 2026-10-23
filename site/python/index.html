@@ -1,0 +1,225 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>s3pe — read and write data on s3.pe.gov.br from Python</title>
+<meta name="description" content="read_s3 and write_s3 for Python: DataFrames, dicts and files in and out of s3.pe.gov.br, the Garage store of Pernambuco, or any S3-style store. A Rust core signs, retries and checks every transfer; wheels for Linux, macOS and Windows." />
+<meta property="og:title" content="s3pe — read and write data on s3.pe.gov.br from Python" />
+<meta property="og:description" content="read_s3 and write_s3 for Python: DataFrames, dicts and files in and out of s3.pe.gov.br, the Garage store of Pernambuco, or any S3-style store. A Rust core signs, retries and checks every transfer; wheels for Linux, macOS and Windows." />
+<meta property="og:type" content="website" />
+<meta property="og:url" content="https://strategicprojects.github.io/s3pe/python/" />
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%AA%A3%3C/text%3E%3C/svg%3E" />
+<style>
+  :root { --bg: #0b1020; --bg-soft: #121a33; --card: #16203f; --border: #263457; --fg: #e8edf7; --muted: #9fb0d0; --brand: #3776ab; --brand-2: #29c7ac; --accent: #ffb14e; --code-bg: #0d1428; --shadow: 0 12px 40px rgba(0,0,0,.35); --radius: 16px; --maxw: 1080px; }
+  @media (prefers-color-scheme: light) { :root { --bg: #f6f8fe; --bg-soft: #eef2fb; --card: #ffffff; --border: #dbe3f4; --fg: #10192e; --muted: #56648a; --code-bg: #0d1428; --shadow: 0 12px 36px rgba(30,45,90,.12); } }
+  * { box-sizing: border-box; } html { scroll-behavior: smooth; }
+  body { margin: 0; font: 16px/1.65 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; color: var(--fg); background: radial-gradient(1100px 600px at 12% -8%, color-mix(in srgb, var(--brand) 22%, transparent), transparent 60%), radial-gradient(900px 500px at 96% 4%, rgba(41,199,172,.16), transparent 55%), var(--bg); -webkit-font-smoothing: antialiased; }
+  a { color: var(--brand-2); text-decoration: none; } a:hover { text-decoration: underline; }
+  .wrap { max-width: var(--maxw); margin: 0 auto; padding: 0 22px; }
+  header.nav { position: sticky; top: 0; z-index: 10; backdrop-filter: blur(10px); background: color-mix(in srgb, var(--bg) 78%, transparent); border-bottom: 1px solid var(--border); }
+  .nav-inner { display: flex; align-items: center; justify-content: space-between; height: 62px; }
+  .brand { display: flex; align-items: center; gap: 10px; font-weight: 800; letter-spacing: -.02em; font-size: 1.1rem; } .brand .logo { font-size: 1.35rem; }
+  .nav-links { display: flex; gap: 22px; align-items: center; } .nav-links a { color: var(--muted); font-weight: 600; font-size: .95rem; } .nav-links a:hover { color: var(--fg); text-decoration: none; }
+  .btn { display: inline-flex; align-items: center; gap: 8px; padding: 10px 16px; border-radius: 12px; font-weight: 700; font-size: .95rem; border: 1px solid var(--border); color: var(--fg); background: var(--card); transition: transform .12s ease, box-shadow .12s ease; }
+  .btn:hover { text-decoration: none; transform: translateY(-1px); box-shadow: var(--shadow); } .btn.primary { background: linear-gradient(135deg, var(--brand), #5b73ff); color: #fff; border: none; }
+  @media (max-width: 720px) { .nav-links a.hide-sm { display: none; } }
+  .hero { padding: 74px 0 40px; }
+  .eyebrow { display: inline-flex; align-items: center; gap: 8px; font-size: .8rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--brand-2); background: color-mix(in srgb, var(--brand-2) 14%, transparent); border: 1px solid color-mix(in srgb, var(--brand-2) 30%, transparent); padding: 6px 12px; border-radius: 999px; }
+  h1 { font-size: clamp(2.2rem, 5vw, 3.4rem); line-height: 1.05; letter-spacing: -.03em; margin: 18px 0 14px; } h1 .grad { background: linear-gradient(120deg, var(--brand), var(--brand-2)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .lead { font-size: 1.18rem; color: var(--muted); max-width: 46ch; } .badges { display: flex; flex-wrap: wrap; gap: 8px; margin: 24px 0 26px; } .badges img { height: 22px; } .cta { display: flex; flex-wrap: wrap; gap: 12px; }
+  .hero-grid { display: grid; grid-template-columns: 1.05fr .95fr; gap: 40px; align-items: center; } @media (max-width: 900px) { .hero-grid { grid-template-columns: 1fr; } }
+  .term { background: var(--code-bg); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; }
+  .term-bar { display: flex; align-items: center; gap: 8px; padding: 12px 14px; border-bottom: 1px solid rgba(255,255,255,.07); } .dot { width: 12px; height: 12px; border-radius: 50%; } .dot.r { background: #ff5f57; } .dot.y { background: #febc2e; } .dot.g { background: #28c840; }
+  .term-title { margin-left: 8px; color: #7f8bb0; font: 600 .82rem ui-monospace, monospace; }
+  pre { margin: 0; padding: 18px 18px 22px; overflow-x: auto; } code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: .88rem; } pre code { color: #d7e0f5; }
+  .c-prompt { color: #6ee7c8; } .c-flag { color: #ffb14e; } .c-cmd { color: #8ea2ff; } .c-cmt { color: #6b779b; } .c-ok { color: #59d99a; } .c-str { color: #ffb14e; } .c-ty { color: #6ee7c8; } .c-kw { color: #c9a5ff; }
+  section { padding: 56px 0; } section.alt { background: var(--bg-soft); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+  h2 { font-size: clamp(1.6rem, 3.4vw, 2.2rem); letter-spacing: -.02em; margin: 0 0 8px; } .sub { color: var(--muted); margin: 0 0 30px; max-width: 62ch; }
+  .grid { display: grid; gap: 18px; } .grid.f3 { grid-template-columns: repeat(3, 1fr); } .grid.f2 { grid-template-columns: repeat(2, 1fr); } @media (max-width: 860px) { .grid.f3, .grid.f2 { grid-template-columns: 1fr; } }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 22px; transition: transform .14s ease, box-shadow .14s ease, border-color .14s ease; }
+  .card:hover { transform: translateY(-3px); box-shadow: var(--shadow); border-color: color-mix(in srgb, var(--brand) 40%, var(--border)); }
+  .card .ic { font-size: 1.5rem; } .card h3 { margin: 12px 0 6px; font-size: 1.1rem; letter-spacing: -.01em; } .card p { margin: 0; color: var(--muted); font-size: .96rem; }
+  .pills { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; } .pill { font: 600 .82rem ui-monospace, monospace; padding: 6px 11px; border-radius: 999px; background: color-mix(in srgb, var(--brand) 12%, transparent); border: 1px solid color-mix(in srgb, var(--brand) 26%, transparent); color: var(--fg); }
+  .steps { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; } @media (max-width: 860px) { .steps { grid-template-columns: 1fr 1fr; } }
+  .step { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 16px; } .step .n { font: 800 .8rem ui-monospace, monospace; color: var(--brand-2); } .step h4 { margin: 6px 0 4px; font-size: 1rem; } .step p { margin: 0; color: var(--muted); font-size: .9rem; }
+  .panel { background: var(--code-bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 6px; } .note { color: var(--muted); font-size: .9rem; margin-top: 10px; }
+  .diagram { background: #ffffff; border: 1px solid var(--border); border-radius: var(--radius); padding: 22px; box-shadow: var(--shadow); overflow-x: auto; } .diagram img { display: block; width: 100%; max-width: 960px; height: auto; margin: 0 auto; }
+  table.cmp { width: 100%; border-collapse: collapse; font-size: .94rem; } table.cmp th, table.cmp td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--border); vertical-align: top; } table.cmp th { color: var(--muted); font-weight: 700; }
+  table.cmp code { background: color-mix(in srgb, var(--brand) 12%, transparent); padding: 2px 6px; border-radius: 6px; font-size: .86rem; color: var(--fg); } .scroll { overflow-x: auto; }
+  footer { padding: 40px 0 60px; color: var(--muted); border-top: 1px solid var(--border); } .foot-inner { display: flex; flex-wrap: wrap; gap: 16px; justify-content: space-between; align-items: center; } .foot-links { display: flex; gap: 18px; flex-wrap: wrap; }
+</style>
+</head>
+<body>
+<header class="nav">
+  <div class="wrap nav-inner">
+    <div class="brand"><span class="logo">🐍</span> s3pe <span style="color:var(--muted);font-weight:600">· Python</span></div>
+    <nav class="nav-links">
+      <a class="hide-sm" href="#features">Features</a>
+      <a class="hide-sm" href="#verbs">Verbs</a>
+      <a class="hide-sm" href="#how">How it works</a>
+      <a class="hide-sm" href="#install">Install</a>
+      <a class="hide-sm" href="#architecture">Architecture</a>
+      <a class="hide-sm" href="api/">API reference</a>
+      <a class="hide-sm" href="../">All editions</a>
+      <a class="btn" href="https://github.com/StrategicProjects/s3pe">GitHub ↗</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <section class="hero">
+    <div class="wrap hero-grid">
+      <div>
+        <span class="eyebrow">◆ Python · S3 client</span>
+        <h1>Data in and out of <span class="grad">s3.pe.gov.br</span>, in Python.</h1>
+        <p class="lead">Nine verbs that read and write DataFrames, dicts, text and files by extension, on a Rust core that signs, retries and verifies every transfer. <code>pip install s3pe</code>, two environment variables, done.</p>
+        <div class="badges">
+          <a href="https://pypi.org/project/s3pe/"><img alt="PyPI" src="https://img.shields.io/pypi/v/s3pe.svg"></a>
+          <a href="https://github.com/StrategicProjects/s3pe/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/StrategicProjects/s3pe/actions/workflows/ci.yml/badge.svg"></a>
+          <a href="https://github.com/StrategicProjects/s3pe/blob/main/LICENSE"><img alt="License MIT" src="https://img.shields.io/badge/license-MIT-blue.svg"></a>
+          <img alt="Python 3.9+" src="https://img.shields.io/badge/python-3.9%2B-informational.svg">
+        </div>
+        <div class="cta">
+          <a class="btn primary" href="#install">Get started →</a>
+          <a class="btn" href="api/">API reference</a>
+          <a class="btn" href="https://github.com/StrategicProjects/s3pe">GitHub ★</a>
+        </div>
+      </div>
+      <div class="term" aria-hidden="true">
+        <div class="term-bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="term-title">analysis.py</span></div>
+<pre><code><span class="c-kw">import</span> s3pe
+
+<span class="c-cmt"># credentials and endpoint from the environment</span>
+meta = s3pe.<span class="c-cmd">read_s3</span>(<span class="c-str">"s3://iaempe/dados/metadata.json"</span>)   <span class="c-cmt"># dict</span>
+<span class="c-ok">↓ s3://iaempe/dados/metadata.json (1.2 kB, 0.2 s)</span>
+
+df = s3pe.<span class="c-cmd">read_s3</span>(<span class="c-str">"series/estado/icms.csv.gz"</span>,
+                  bucket=<span class="c-str">"horizonte-fiscal"</span>)        <span class="c-cmt"># DataFrame</span>
+s3pe.<span class="c-cmd">write_s3</span>(df, <span class="c-str">"s3://iaempe/nota/icms.parquet"</span>)
+<span class="c-ok">↑ s3://iaempe/nota/icms.parquet (84.1 kB, 0.3 s)</span>
+
+<span class="c-kw">for</span> o <span class="c-kw">in</span> s3pe.<span class="c-cmd">list_s3</span>(<span class="c-str">"s3://iaempe/dados/"</span>):
+    print(o.size, o.key)</code></pre>
+      </div>
+    </div>
+  </section>
+
+  <section id="features" class="alt">
+    <div class="wrap">
+      <h2>Built to be trusted with the data</h2>
+      <p class="sub">A client that moves the files a pipeline depends on has one job: either the bytes arrived, or you hear about it. Everything here serves that.</p>
+      <div class="grid f3">
+        <div class="card"><div class="ic">🗂️</div><h3>Formats by extension</h3><p><code>.json</code> → dict, <code>.csv</code>/<code>.csv.gz</code>/<code>.tsv</code>/<code>.parquet</code>/<code>.xlsx</code> → DataFrame, text files → str, anything else → bytes. <code>format=</code> overrides; extra arguments go to pandas.</p></div>
+        <div class="card"><div class="ic">🦀</div><h3>A Rust core</h3><p>Signing, retries and checks happen in the s3pe crate; the GIL is released during transfers. Wheels for Linux (x86_64, aarch64), macOS and Windows, Python 3.9 or later.</p></div>
+        <div class="card"><div class="ic">🔏</div><h3>Signed the way Garage wants</h3><p>AWS Signature V4 over the real SHA-256 of the body. No unsigned payloads, no <code>aws-chunked</code> trailers, path-style URLs.</p></div>
+        <div class="card"><div class="ic">🔁</div><h3>Retries that know when to stop</h3><p>Connection failures and HTTP 429/500/502/503/504: three tries, 1 s then 2 s. Never on other 4xx.</p></div>
+        <div class="card"><div class="ic">✅</div><h3>Every byte accounted for</h3><p>ETag against the local MD5 after a PUT; Content-Length and MD5 after a GET. Downloads land in a <code>.s3pe-part</code> file and are renamed when complete.</p></div>
+        <div class="card"><div class="ic">🧭</div><h3>Typed exceptions</h3><p><code>NotFoundError</code>, <code>AccessDeniedError</code>, <code>HttpError</code> (with <code>.status</code>, <code>.code</code>), <code>TransportError</code>, <code>ConfigError</code>, <code>IntegrityError</code>, all under <code>S3Error</code>.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="verbs">
+    <div class="wrap">
+      <h2>The nine verbs</h2>
+      <p class="sub">Module-level verbs over a default client (<code>s3pe.configure(bucket="iaempe")</code> sets it), and the same verbs as methods of <code>s3pe.Client</code>.</p>
+      <div class="scroll"><table class="cmp">
+        <thead><tr><th>Verb</th><th>Does</th></tr></thead>
+        <tbody>
+          <tr><td><code>read_s3</code></td><td>GET, decoded by extension or <code>format=</code></td></tr>
+          <tr><td><code>write_s3</code></td><td>PUT a DataFrame, dict, list, str, bytes, file-like or Path</td></tr>
+          <tr><td><code>download_s3</code></td><td>GET to a file, streaming; refuses to overwrite unless asked</td></tr>
+          <tr><td><code>upload_s3</code></td><td>PUT from a file, streaming</td></tr>
+          <tr><td><code>list_s3</code></td><td>every <code>S3Object</code> under a prefix, all pages</td></tr>
+          <tr><td><code>exists_s3</code></td><td><code>bool</code></td></tr>
+          <tr><td><code>head_s3</code></td><td><code>S3Object</code> or <code>None</code>: size, type, date, ETag</td></tr>
+          <tr><td><code>delete_s3</code></td><td>idempotent</td></tr>
+          <tr><td><code>buckets_s3</code></td><td>list of <code>Bucket</code></td></tr>
+        </tbody>
+      </table></div>
+      <p class="note">A key is <code>s3://bucket/key</code>, or a bare key when the bucket is configured (<code>S3PE_BUCKET</code> or the client). Credentials: <code>AWS_ACCESS_KEY_ID</code> and <code>AWS_SECRET_ACCESS_KEY</code>; endpoint <code>S3PE_ENDPOINT</code>, default <code>https://s3.pe.gov.br</code>.</p>
+    </div>
+  </section>
+
+  <section id="how" class="alt">
+    <div class="wrap">
+      <h2>What happens in every call</h2>
+      <p class="sub">The same six steps in the four editions.</p>
+      <div class="diagram"><img src="../assets/request-flow.svg" alt="Six steps: resolve the key, hash the payload, sign with SigV4, send with Content-Length, retry on 429 and 5xx after 1 and 2 seconds, verify the ETag and Content-Length. Success prints one log line; errors are typed." loading="lazy" /></div>
+      <div class="steps" style="margin-top:18px">
+        <div class="step"><div class="n">01</div><h4>Resolve and hash</h4><p><code>s3://bucket/key</code> or bucket plus key; SHA-256 for the signature, MD5 for the check.</p></div>
+        <div class="step"><div class="n">02</div><h4>Sign and send</h4><p>SigV4 over host, date and payload hash; path-style, Content-Length, no chunked trailers.</p></div>
+        <div class="step"><div class="n">03</div><h4>Retry</h4><p>Connection failures and 429/5xx, three tries, 1 s then 2 s. Other 4xx come straight back.</p></div>
+        <div class="step"><div class="n">04</div><h4>Verify and report</h4><p>ETag and Content-Length checked; one line on stderr; typed errors otherwise.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="install">
+    <div class="wrap">
+      <h2>Install &amp; run</h2>
+      <p class="sub">Python 3.9 or later; pandas and pyarrow only for tables. Changes between versions in the <a href="https://github.com/StrategicProjects/s3pe/blob/main/CHANGELOG.md">changelog</a>.</p>
+      <div class="panel" style="margin-bottom:18px">
+<pre><code><span class="c-prompt">$</span> <span class="c-cmd">pip</span> install s3pe              <span class="c-cmt"># bytes, str, dict/list and files</span>
+<span class="c-prompt">$</span> <span class="c-cmd">pip</span> install <span class="c-str">"s3pe[pandas]"</span>     <span class="c-cmt"># also CSV, Parquet and Excel as DataFrames</span></code></pre>
+      </div>
+      <div class="grid f2">
+        <div><div class="panel">
+<pre><code><span class="c-cmt"># an explicit client</span>
+s3 = s3pe.<span class="c-ty">Client</span>(endpoint=<span class="c-str">"http://127.0.0.1:9003"</span>,
+                 bucket=<span class="c-str">"iaempe"</span>,
+                 access_key=<span class="c-str">"GK…"</span>, secret_key=<span class="c-str">"…"</span>)
+s3.<span class="c-cmd">read</span>(<span class="c-str">"dados/metadata.json"</span>)
+s3.<span class="c-cmd">write</span>(df, <span class="c-str">"nota/icms.csv"</span>, index=<span class="c-kw">False</span>)
+s3.<span class="c-cmd">download</span>(<span class="c-str">"dados/pe_municipios.geojson"</span>, <span class="c-str">"pe.geojson"</span>)
+s3.<span class="c-cmd">upload</span>(<span class="c-str">"figura1.png"</span>, <span class="c-str">"nota/"</span>)
+s3.<span class="c-cmd">head</span>(<span class="c-str">"etl/painel.parquet"</span>)      <span class="c-cmt"># S3Object or None</span>
+
+s3pe.<span class="c-cmd">quiet</span>()                        <span class="c-cmt"># or S3PE_QUIET=1</span></code></pre>
+        </div></div>
+        <div><div class="panel">
+<pre><code><span class="c-cmt"># errors and formats</span>
+<span class="c-kw">try</span>:
+    s3pe.<span class="c-cmd">read_s3</span>(<span class="c-str">"s3://iaempe/missing.json"</span>)
+<span class="c-kw">except</span> s3pe.<span class="c-ty">NotFoundError</span>:
+    ...
+<span class="c-kw">except</span> s3pe.<span class="c-ty">HttpError</span> <span class="c-kw">as</span> e:
+    print(e.status, e.code)
+
+raw = s3pe.<span class="c-cmd">read_s3</span>(<span class="c-str">"x.csv"</span>, bucket=<span class="c-str">"b"</span>, format=<span class="c-str">"bytes"</span>)
+df  = s3pe.<span class="c-cmd">read_s3</span>(<span class="c-str">"x.csv"</span>, bucket=<span class="c-str">"b"</span>, sep=<span class="c-str">";"</span>, dtype=str)
+s3pe.<span class="c-cmd">write_s3</span>({<span class="c-str">"ok"</span>: <span class="c-kw">True</span>}, <span class="c-str">"s3://b/manifest.json"</span>)
+s3pe.<span class="c-cmd">write_s3</span>(df, <span class="c-str">"s3://b/series.csv.gz"</span>)   <span class="c-cmt"># gzipped on the way</span></code></pre>
+        </div></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="architecture" class="alt">
+    <div class="wrap">
+      <h2>Architecture</h2>
+      <p class="sub">The Python package is a thin layer: formats and logging in Python, everything on the wire in the Rust crate through PyO3. R and Go reimplement the same specification; the four signers reproduce the AWS documentation vector. One repository, one version, one <a href="https://github.com/StrategicProjects/s3pe/blob/main/DESIGN.md">DESIGN.md</a>.</p>
+      <div class="diagram"><img src="../assets/architecture.svg" alt="Four editions (R on httr2 and openssl; Python as a PyO3 binding on the Rust crate; the Rust crate on ureq and rustls with the s3pe command line; Go on net/http) share one specification and talk to s3.pe.gov.br, a Garage server, or any S3 store." loading="lazy" /></div>
+      <div class="grid f3" style="margin-top:18px">
+        <div class="card"><h3>R</h3><pre><code>install.packages("s3pe")</code></pre><div class="note"><a href="../r/">R edition →</a></div></div>
+        <div class="card"><h3>Rust</h3><pre><code>cargo add s3pe</code></pre><div class="note"><a href="../rust/">Rust edition →</a></div></div>
+        <div class="card"><h3>Go</h3><pre><code>go get github.com/StrategicProjects/s3pe</code></pre><div class="note"><a href="../go/">Go edition →</a></div></div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap foot-inner">
+    <div>s3pe · MIT · André Leite, Marcos Wasiliew, Hugo Vasconcelos, Carlos Amorim, Diogo Bezerra, Júlia Nascimento Barreto</div>
+    <div class="foot-links">
+      <a href="https://github.com/StrategicProjects/s3pe">GitHub</a>
+      <a href="https://github.com/StrategicProjects/s3pe/blob/main/CHANGELOG.md">Changelog</a>
+      <a href="https://github.com/StrategicProjects/s3pe/blob/main/DESIGN.md">Design</a>
+      <a href="../">All editions</a>
+    </div>
+  </div>
+</footer>
+</body>
+</html>

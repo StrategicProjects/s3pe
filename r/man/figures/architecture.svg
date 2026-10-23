@@ -1,0 +1,84 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 470" width="960" height="470" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="14">
+  <title>s3pe architecture: four editions, one specification, one object store</title>
+  <desc>Four boxes on top (R package on httr2 and openssl; Python package as a PyO3 binding on the Rust crate; Rust crate on ureq and rustls with the s3pe command line; Go module on net/http). The Python box points into the Rust box. All four point down into one band, the shared specification: resolve the key, SigV4 signing, retries, integrity checks, one log line. The band points down to the object store: s3.pe.gov.br, a Garage server with path-style URLs and buckets such as iaempe and horizonte-fiscal, or any S3 store.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#56648a"/>
+    </marker>
+    <style>
+      .box { fill: #ffffff; stroke: #c3cde6; stroke-width: 1.5; rx: 14; }
+      .core { fill: #eef2fb; stroke: #1f8fff; stroke-width: 2; rx: 14; }
+      .store { fill: #e6f7f3; stroke: #29c7ac; stroke-width: 2; rx: 14; }
+      .t { fill: #10192e; font-weight: 700; font-size: 16px; }
+      .s { fill: #56648a; font-size: 13px; }
+      .k { fill: #1f8fff; font-weight: 700; font-size: 12px; letter-spacing: .08em; }
+      .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12.5px; fill: #10192e; }
+      .line { stroke: #56648a; stroke-width: 1.6; fill: none; marker-end: url(#arrow); }
+    </style>
+  </defs>
+
+  <!-- editions -->
+  <g>
+    <rect class="box" x="20" y="30" width="215" height="110"/>
+    <text class="k" x="36" y="54">R PACKAGE · CRAN</text>
+    <text class="t" x="36" y="78">s3pe</text>
+    <text class="s" x="36" y="100">httr2 · openssl · cli</text>
+    <text class="s" x="36" y="120">tibbles, lists, sf by extension</text>
+
+    <rect class="box" x="255" y="30" width="215" height="110"/>
+    <text class="k" x="271" y="54">PYTHON · PyPI</text>
+    <text class="t" x="271" y="78">s3pe</text>
+    <text class="s" x="271" y="100">PyO3 binding on the crate</text>
+    <text class="s" x="271" y="120">DataFrames, dicts by extension</text>
+
+    <rect class="box" x="490" y="30" width="215" height="110"/>
+    <text class="k" x="506" y="54">RUST · crates.io</text>
+    <text class="t" x="506" y="78">s3pe + CLI</text>
+    <text class="s" x="506" y="100">ureq · rustls · hmac · sha2</text>
+    <text class="s" x="506" y="120">s3pe ls / get / put / rm</text>
+
+    <rect class="box" x="725" y="30" width="215" height="110"/>
+    <text class="k" x="741" y="54">GO · pkg.go.dev</text>
+    <text class="t" x="741" y="78">s3pe</text>
+    <text class="s" x="741" y="100">net/http · crypto/hmac</text>
+    <text class="s" x="741" y="120">standard library only</text>
+  </g>
+
+  <!-- python -> rust binding -->
+  <path class="line" d="M470,85 L488,85"/>
+  <text class="s" x="440" y="160" text-anchor="middle" font-size="12">Python calls the Rust crate; the GIL is released during transfers</text>
+
+  <!-- arrows down -->
+  <path class="line" d="M127,140 L127,188"/>
+  <path class="line" d="M362,140 L362,188"/>
+  <path class="line" d="M597,140 L597,188"/>
+  <path class="line" d="M832,140 L832,188"/>
+
+  <!-- shared spec -->
+  <rect class="core" x="20" y="190" width="920" height="130"/>
+  <text class="k" x="36" y="214">ONE SPECIFICATION · DESIGN.md</text>
+  <text class="t" x="36" y="238">The same nine verbs, the same behaviour</text>
+  <g class="mono">
+    <text x="36" y="266">read_s3 · write_s3 · download_s3 · upload_s3 · list_s3 · delete_s3 · exists_s3 · head_s3 · buckets_s3</text>
+  </g>
+  <g>
+    <rect x="36" y="280" width="150" height="26" rx="13" fill="#ffffff" stroke="#c3cde6"/>
+    <text class="s" x="111" y="297" text-anchor="middle">resolve s3://bucket/key</text>
+    <rect x="196" y="280" width="140" height="26" rx="13" fill="#ffffff" stroke="#c3cde6"/>
+    <text class="s" x="266" y="297" text-anchor="middle">SigV4 over SHA-256</text>
+    <rect x="346" y="280" width="170" height="26" rx="13" fill="#ffffff" stroke="#c3cde6"/>
+    <text class="s" x="431" y="297" text-anchor="middle">retry 429/5xx: 1 s, 2 s</text>
+    <rect x="526" y="280" width="214" height="26" rx="13" fill="#ffffff" stroke="#c3cde6"/>
+    <text class="s" x="633" y="297" text-anchor="middle">verify ETag/MD5, Content-Length</text>
+    <rect x="750" y="280" width="172" height="26" rx="13" fill="#ffffff" stroke="#c3cde6"/>
+    <text class="s" x="836" y="297" text-anchor="middle">one log line, typed errors</text>
+  </g>
+
+  <path class="line" d="M480,320 L480,360"/>
+
+  <!-- store -->
+  <rect class="store" x="20" y="362" width="920" height="88"/>
+  <text class="k" x="36" y="386" fill="#1a9c86">OBJECT STORE</text>
+  <text class="t" x="36" y="410">s3.pe.gov.br · Garage · path-style · no anonymous access</text>
+  <text class="s" x="36" y="434">buckets per project (iaempe, horizonte-fiscal, …) · inside the server: http://127.0.0.1:9003 · or any S3-style store</text>
+</svg>

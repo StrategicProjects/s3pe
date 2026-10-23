@@ -29,6 +29,10 @@
 //! # Ok::<(), s3pe::Error>(())
 //! ```
 //!
+//! # What happens in every call
+//!
+//! ![Resolve the key, hash the payload, sign with SigV4, send, retry on 429 and 5xx, verify the ETag and Content-Length; success logs one line, errors are typed.](https://raw.githubusercontent.com/StrategicProjects/s3pe/main/site/assets/request-flow.svg)
+//!
 //! # Configuration
 //!
 //! Anything not passed to the builder comes from the environment:

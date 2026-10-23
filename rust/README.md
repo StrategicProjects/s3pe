@@ -9,8 +9,8 @@ A small, dependable S3 client and command line, made for **s3.pe.gov.br**
 (the [Garage](https://garagehq.deuxfleurs.fr) object store of the State of
 Pernambuco, Brazil) and usable with any S3-style store.
 
-**Website:** <https://strategicprojects.github.io/s3pe/> ·
-**API reference:** <https://docs.rs/s3pe>
+**Website:** <https://strategicprojects.github.io/s3pe/rust/> ·
+**API reference:** <https://docs.rs/s3pe> · [all editions](https://strategicprojects.github.io/s3pe/)
 
 ## Install
 
@@ -66,6 +66,10 @@ s3.delete("etl/old.parquet")?;
 Path-style URLs always. Keys are bare (relative to the bucket) or full
 `s3://bucket/key` URLs.
 
+### What happens in every call
+
+<img src="https://raw.githubusercontent.com/StrategicProjects/s3pe/main/site/assets/request-flow.svg" alt="Resolve the key, hash the payload, sign with SigV4, send, retry on 429 and 5xx, verify the ETag and Content-Length; success logs one line, errors are typed." width="100%" />
+
 ### What "dependable" means
 
 - AWS Signature V4 over the real SHA-256 of the payload: no
@@ -98,6 +102,10 @@ s3pe --endpoint http://127.0.0.1:9003 -b iaempe ls dados/   # inside the server
 
 Exit codes: 0 ok, 2 not found, 3 access denied, 4 configuration, 1 anything
 else. `-q` or `S3PE_QUIET=1` keeps stderr to errors.
+
+## Architecture
+
+<img src="https://raw.githubusercontent.com/StrategicProjects/s3pe/main/site/assets/architecture.svg" alt="The Rust crate (ureq, rustls, hmac, sha2, plus the s3pe command line) is one of four editions that share one specification; the Python package is a binding on it. All talk to s3.pe.gov.br or any S3 store." width="100%" />
 
 ## The family
 

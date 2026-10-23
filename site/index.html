@@ -72,6 +72,7 @@
   table.cmp th { color: var(--muted); font-weight: 700; }
   table.cmp code { background: color-mix(in srgb, var(--brand) 12%, transparent); padding: 2px 6px; border-radius: 6px; font-size: .86rem; color: var(--fg); }
   .scroll { overflow-x: auto; }
+  .diagram { background: #ffffff; border: 1px solid var(--border); border-radius: var(--radius); padding: 22px; box-shadow: var(--shadow); overflow-x: auto; } .diagram img { display: block; width: 100%; max-width: 960px; height: auto; margin: 0 auto; }
   .steps { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
   @media (max-width: 860px) { .steps { grid-template-columns: 1fr 1fr; } }
   .step { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 16px; }
@@ -89,10 +90,11 @@
       <a class="hide-sm" href="#editions">Editions</a>
       <a class="hide-sm" href="#verbs">Verbs</a>
       <a class="hide-sm" href="#how">How it works</a>
-      <a class="hide-sm" href="#config">Configuration</a>
-      <a class="hide-sm" href="r/">R docs</a>
-      <a class="hide-sm" href="python/">Python docs</a>
-      <a class="hide-sm" href="rust/s3pe/">Rust docs</a>
+      <a class="hide-sm" href="#architecture">Architecture</a>
+      <a class="hide-sm" href="r/">R</a>
+      <a class="hide-sm" href="python/">Python</a>
+      <a class="hide-sm" href="rust/">Rust</a>
+      <a class="hide-sm" href="go/">Go</a>
       <a class="btn" href="https://github.com/StrategicProjects/s3pe">GitHub ↗</a>
     </nav>
   </div>
@@ -148,14 +150,14 @@ df = s3pe.<span class="c-cmd">read_s3</span>(<span class="c-str">"series/estado/
           <div class="links"><a href="r/">Reference</a><a href="https://CRAN.R-project.org/package=s3pe">CRAN</a></div></div>
         <div class="card"><div class="ic">🐍</div><h3>Python</h3><p>A binding on the Rust core, wheels for every platform. DataFrames with pandas, dicts from JSON, bytes otherwise.</p>
 <pre><code>pip install <span class="c-str">"s3pe[pandas]"</span></code></pre>
-          <div class="links"><a href="python/">Reference</a><a href="https://pypi.org/project/s3pe/">PyPI</a></div></div>
+          <div class="links"><a href="python/">Edition page</a><a href="python/api/">Reference</a><a href="https://pypi.org/project/s3pe/">PyPI</a></div></div>
         <div class="card"><div class="ic">🦀</div><h3>Rust</h3><p>The core: SigV4, retries and checks over ureq and rustls. Also the <code>s3pe</code> command line.</p>
 <pre><code>cargo add s3pe
 cargo install s3pe</code></pre>
-          <div class="links"><a href="rust/s3pe/">Reference</a><a href="https://crates.io/crates/s3pe">crates.io</a></div></div>
+          <div class="links"><a href="rust/">Edition page</a><a href="rust/api/s3pe/">Reference</a><a href="https://crates.io/crates/s3pe">crates.io</a></div></div>
         <div class="card"><div class="ic">🐹</div><h3>Go</h3><p>Standard library only, context on every call, typed errors for <code>errors.Is</code>.</p>
 <pre><code>go get github.com/StrategicProjects/s3pe</code></pre>
-          <div class="links"><a href="https://pkg.go.dev/github.com/StrategicProjects/s3pe">Reference</a></div></div>
+          <div class="links"><a href="go/">Edition page</a><a href="https://pkg.go.dev/github.com/StrategicProjects/s3pe">Reference</a></div></div>
       </div>
     </div>
   </section>
@@ -186,6 +188,7 @@ cargo install s3pe</code></pre>
     <div class="wrap">
       <h2>What happens in every call</h2>
       <p class="sub">The parts that make the difference between "it usually works" and "it worked, and we know it did".</p>
+      <div class="diagram" style="margin-bottom:18px"><img src="assets/request-flow.svg" alt="Six steps: resolve the key, hash the payload, sign with SigV4, send with Content-Length, retry on 429 and 5xx after 1 and 2 seconds, verify the ETag and Content-Length. Success prints one log line; errors are typed." loading="lazy" /></div>
       <div class="steps">
         <div class="step"><div class="n">01</div><h4>Sign</h4><p>AWS Signature V4 over the real SHA-256 of the payload. No unsigned payloads, no <code>aws-chunked</code> (Garage rejects it). The four signers reproduce the AWS documentation vector.</p></div>
         <div class="step"><div class="n">02</div><h4>Retry</h4><p>Connection failures and HTTP 429, 500, 502, 503, 504: three tries, 1 s then 2 s. Never on other 4xx.</p></div>
@@ -199,7 +202,15 @@ cargo install s3pe</code></pre>
     </div>
   </section>
 
-  <section id="config">
+  <section id="architecture">
+    <div class="wrap">
+      <h2>Architecture</h2>
+      <p class="sub">Four implementations, one specification, one store. The Python package is a binding on the Rust crate; R and Go are native. Each edition has its own page: <a href="r/">R</a>, <a href="python/">Python</a>, <a href="rust/">Rust</a>, <a href="go/">Go</a>.</p>
+      <div class="diagram"><img src="assets/architecture.svg" alt="Four editions (R on httr2 and openssl; Python as a PyO3 binding on the Rust crate; the Rust crate on ureq and rustls with the s3pe command line; Go on net/http) share one specification: resolve the key, sign with SigV4, retry, verify, log one line. All talk to s3.pe.gov.br, a Garage server with path-style URLs, or any S3 store." loading="lazy" /></div>
+    </div>
+  </section>
+
+  <section id="config" class="alt">
     <div class="wrap">
       <h2>Configuration</h2>
       <p class="sub">Argument, then environment, then default. Two variables are enough on a machine that talks to s3.pe.gov.br.</p>

@@ -170,6 +170,14 @@ meta <- tryCatch(
 | `s3pe_error_transport` | the server could not be reached, after the retries |
 | `s3pe_error_integrity` | the bytes that arrived are not the bytes that were sent |
 
+## What happens in every call
+
+<img src="man/figures/request-flow.svg" alt="Resolve the key, hash the payload, sign with SigV4, send, retry on 429 and 5xx, verify the ETag and Content-Length; success logs one line, errors are typed." width="100%" />
+
+## Architecture
+
+<img src="man/figures/architecture.svg" alt="The R package (httr2, openssl, cli) is one of four editions that share one specification; Python is a binding on the Rust crate, Go is standard library only. All talk to s3.pe.gov.br or any S3 store." width="100%" />
+
 ## Em português
 
 `s3pe` lê e grava dados no armazenamento S3 do Estado de Pernambuco

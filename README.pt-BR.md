@@ -13,9 +13,9 @@ uma linha.
 | Edição | Instalação | Documentação |
 |---|---|---|
 | R | `install.packages("s3pe")` · `pak::pak("StrategicProjects/s3pe/r")` | [pkgdown](https://strategicprojects.github.io/s3pe/r/) |
-| Python | `pip install s3pe` (`"s3pe[pandas]"` para tabelas) | [API](https://strategicprojects.github.io/s3pe/python/) |
-| Rust | `cargo add s3pe` · `cargo install s3pe` (o comando `s3pe`) | [docs.rs](https://docs.rs/s3pe) |
-| Go | `go get github.com/StrategicProjects/s3pe` | [pkg.go.dev](https://pkg.go.dev/github.com/StrategicProjects/s3pe) |
+| Python | `pip install s3pe` (`"s3pe[pandas]"` para tabelas) | [site](https://strategicprojects.github.io/s3pe/python/) · [API](https://strategicprojects.github.io/s3pe/python/api/) |
+| Rust | `cargo add s3pe` · `cargo install s3pe` (o comando `s3pe`) | [site](https://strategicprojects.github.io/s3pe/rust/) · [docs.rs](https://docs.rs/s3pe) |
+| Go | `go get github.com/StrategicProjects/s3pe` | [site](https://strategicprojects.github.io/s3pe/go/) · [pkg.go.dev](https://pkg.go.dev/github.com/StrategicProjects/s3pe) |
 
 ## Os nove verbos
 

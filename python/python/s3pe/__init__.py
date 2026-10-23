@@ -15,6 +15,11 @@ The format follows the key's extension (``.json``, ``.csv``, ``.csv.gz``,
 ``.tsv``, ``.parquet``, ``.xlsx``, ``.geojson``, text files; anything else
 is ``bytes``) or ``format=``. pandas is needed for tables
 (``pip install s3pe[pandas]``).
+
+What happens in every call:
+
+.. image:: https://raw.githubusercontent.com/StrategicProjects/s3pe/main/site/assets/request-flow.svg
+   :alt: Resolve the key, hash the payload, sign with SigV4, send, retry on 429 and 5xx, verify the ETag and Content-Length; success logs one line, errors are typed.
 """
 
 from __future__ import annotations

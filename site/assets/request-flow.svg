@@ -1,0 +1,86 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 330" width="960" height="330" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="13">
+  <title>What happens in every s3pe call</title>
+  <desc>Six steps from left to right: resolve the key (s3://bucket/key, or bucket plus key, or the default bucket); hash the payload (SHA-256 for the signature, MD5 for the check); sign with AWS Signature V4 over host, x-amz-date and x-amz-content-sha256; send a PUT, GET, HEAD or DELETE with Content-Length, path-style; retry on connection failure or HTTP 429/500/502/503/504 after 1 s and 2 s, never on other 4xx; verify the ETag against the MD5 and the Content-Length, then print one log line. Below, the typed errors: 404 not found, 403 access denied, other HTTP with the S3 code, transport, configuration, integrity.</desc>
+  <defs>
+    <marker id="arrow2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#56648a"/>
+    </marker>
+    <style>
+      .step { fill: #ffffff; stroke: #c3cde6; stroke-width: 1.5; rx: 12; }
+      .n { fill: #29c7ac; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-weight: 800; font-size: 11px; }
+      .t { fill: #10192e; font-weight: 700; font-size: 14px; }
+      .s { fill: #56648a; font-size: 10.3px; }
+      .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 11px; fill: #10192e; }
+      .line { stroke: #56648a; stroke-width: 1.6; fill: none; marker-end: url(#arrow2); }
+      .loop { stroke: #ffb14e; stroke-width: 1.6; fill: none; marker-end: url(#arrow2); stroke-dasharray: 5 4; }
+      .err { fill: #fff3f2; stroke: #ff8a80; stroke-width: 1.5; rx: 12; }
+      .ok { fill: #e6f7f3; stroke: #29c7ac; stroke-width: 1.5; rx: 12; }
+    </style>
+  </defs>
+
+  <g>
+    <rect class="step" x="15" y="30" width="140" height="120"/>
+    <text class="n" x="29" y="52">01</text>
+    <text class="t" x="29" y="74">Resolve</text>
+    <text class="s" x="29" y="94">s3://bucket/key,</text>
+    <text class="s" x="29" y="110">bucket= + key, or</text>
+    <text class="s" x="29" y="126">the default bucket</text>
+
+    <rect class="step" x="172" y="30" width="140" height="120"/>
+    <text class="n" x="186" y="52">02</text>
+    <text class="t" x="186" y="74">Hash</text>
+    <text class="s" x="186" y="94">SHA-256 of the body</text>
+    <text class="s" x="186" y="110">for the signature,</text>
+    <text class="s" x="186" y="126">MD5 for the check</text>
+
+    <rect class="step" x="329" y="30" width="140" height="120"/>
+    <text class="n" x="343" y="52">03</text>
+    <text class="t" x="343" y="74">Sign</text>
+    <text class="s" x="343" y="94">AWS SigV4 over host,</text>
+    <text class="s" x="343" y="110">x-amz-date and</text>
+    <text class="s" x="343" y="126">x-amz-content-sha256</text>
+
+    <rect class="step" x="486" y="30" width="140" height="120"/>
+    <text class="n" x="500" y="52">04</text>
+    <text class="t" x="500" y="74">Send</text>
+    <text class="s" x="500" y="94">PUT, GET, HEAD, DELETE;</text>
+    <text class="s" x="500" y="110">path-style URL,</text>
+    <text class="s" x="500" y="126">Content-Length, no chunks</text>
+
+    <rect class="step" x="643" y="30" width="140" height="120"/>
+    <text class="n" x="657" y="52">05</text>
+    <text class="t" x="657" y="74">Retry</text>
+    <text class="s" x="657" y="94">connection failures and</text>
+    <text class="s" x="657" y="110">HTTP 429, 500, 502, 503, 504:</text>
+    <text class="s" x="657" y="126">3 tries, 1 s then 2 s</text>
+
+    <rect class="step" x="800" y="30" width="145" height="120"/>
+    <text class="n" x="814" y="52">06</text>
+    <text class="t" x="814" y="74">Verify</text>
+    <text class="s" x="814" y="94">ETag = MD5 on PUT,</text>
+    <text class="s" x="814" y="110">Content-Length and MD5</text>
+    <text class="s" x="814" y="126">on GET</text>
+  </g>
+
+  <path class="line" d="M155,90 L170,90"/>
+  <path class="line" d="M312,90 L327,90"/>
+  <path class="line" d="M469,90 L484,90"/>
+  <path class="line" d="M626,90 L641,90"/>
+  <path class="line" d="M783,90 L798,90"/>
+  <!-- retry loop back to send -->
+  <path class="loop" d="M713,150 C713,185 556,185 556,152"/>
+  <text class="s" x="634" y="190" text-anchor="middle" fill="#b8791c">signed again, with a fresh date</text>
+
+  <!-- outcomes -->
+  <rect class="ok" x="15" y="225" width="455" height="80"/>
+  <text class="t" x="31" y="249">Success: the object, the file or the listing, and one line on stderr</text>
+  <g class="mono">
+    <text x="31" y="272">↑ s3://iaempe/etl/painel.parquet (12.3 MB, 0.8 s)</text>
+    <text x="31" y="292">✔ 31 objects under s3://iaempe/dados/ (0.2 s)</text>
+  </g>
+
+  <rect class="err" x="490" y="225" width="455" height="80"/>
+  <text class="t" x="506" y="249">Typed errors, raised at once (no retry on 4xx)</text>
+  <text class="s" x="506" y="272">404 not found (exists_s3 → FALSE) · 403 access denied · other HTTP with the S3 code</text>
+  <text class="s" x="506" y="292">transport (after the retries) · configuration (no credentials, no bucket) · integrity</text>
+</svg>

@@ -1,8 +1,9 @@
 name: pages
 
 # Publishes to GitHub Pages on every push to main: the landing page in
-# site/, the pkgdown site of the R package under /r, the rustdoc of the
-# crate under /rust and the pdoc of the Python package under /python.
+# site/ (the hub and one landing page per edition), the pkgdown site of the
+# R package under /r, the rustdoc of the crate under /rust/api and the pdoc
+# of the Python package under /python/api.
 # Pages must be set to "GitHub Actions" as its source (Settings → Pages).
 
 on:
@@ -38,7 +39,7 @@ jobs:
       - name: Rust API reference
         run: |
           cd rust && cargo doc --no-deps
-          rm -rf ../site/rust && cp -R target/doc ../site/rust
+          rm -rf ../site/rust/api && cp -R target/doc ../site/rust/api
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
@@ -46,7 +47,7 @@ jobs:
         run: |
           python -m pip install maturin pdoc
           python -m pip install ./python
-          pdoc s3pe --docformat restructuredtext --no-search -o site/python
+          pdoc s3pe --docformat restructuredtext --no-search -o site/python/api
       - uses: r-lib/actions/setup-pandoc@v2
       - uses: r-lib/actions/setup-r@v2
         with:

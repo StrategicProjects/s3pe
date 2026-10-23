@@ -20,9 +20,9 @@ from the file extension; every transfer prints one line.
 | Edition | Install | Docs |
 |---|---|---|
 | R | `install.packages("s3pe")` · `pak::pak("StrategicProjects/s3pe/r")` | [pkgdown](https://strategicprojects.github.io/s3pe/r/) |
-| Python | `pip install s3pe` (`"s3pe[pandas]"` for tables) | [API](https://strategicprojects.github.io/s3pe/python/) |
-| Rust | `cargo add s3pe` · `cargo install s3pe` (the `s3pe` command) | [docs.rs](https://docs.rs/s3pe) |
-| Go | `go get github.com/StrategicProjects/s3pe` | [pkg.go.dev](https://pkg.go.dev/github.com/StrategicProjects/s3pe) |
+| Python | `pip install s3pe` (`"s3pe[pandas]"` for tables) | [site](https://strategicprojects.github.io/s3pe/python/) · [API](https://strategicprojects.github.io/s3pe/python/api/) |
+| Rust | `cargo add s3pe` · `cargo install s3pe` (the `s3pe` command) | [site](https://strategicprojects.github.io/s3pe/rust/) · [docs.rs](https://docs.rs/s3pe) |
+| Go | `go get github.com/StrategicProjects/s3pe` | [site](https://strategicprojects.github.io/s3pe/go/) · [pkg.go.dev](https://pkg.go.dev/github.com/StrategicProjects/s3pe) |
 
 ## The nine verbs
 
@@ -71,6 +71,10 @@ s3pe put painel.parquet s3://iaempe/etl/
 
 Every edition also has a `Client` (R: `s3_config()`) for explicit settings.
 
+## Architecture
+
+<img src="site/assets/architecture.svg" alt="Four editions (R on httr2 and openssl; Python as a PyO3 binding on the Rust crate; the Rust crate on ureq and rustls with the s3pe command line; Go on net/http) share one specification: resolve the key, sign with SigV4, retry, verify, log one line. All talk to s3.pe.gov.br, a Garage server with path-style URLs, or any S3 store." width="100%" />
+
 ## Configuration
 
 Argument, then environment, then default:
@@ -87,7 +91,9 @@ In R the usual place is `~/.Renviron`; in Python and the CLI any `.env`
 loader or the shell. Never put the key in a script or a repository. Inside
 the condepe server use `S3PE_ENDPOINT=http://127.0.0.1:9003`.
 
-## Dependable by default
+## What happens in every call
+
+<img src="site/assets/request-flow.svg" alt="Six steps: resolve the key, hash the payload, sign with SigV4, send with Content-Length, retry on 429 and 5xx after 1 and 2 seconds, verify the ETag and Content-Length. Success prints one log line; errors are typed: not found, access denied, HTTP, transport, configuration, integrity." width="100%" />
 
 - **Signing**: AWS Signature V4, header style, over the real SHA-256 of the
   payload. No `aws-chunked` (Garage rejects it), no unsigned payloads. The
