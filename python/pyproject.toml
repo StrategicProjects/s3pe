@@ -1,0 +1,60 @@
+[build-system]
+requires = ["maturin>=1.9,<2"]
+build-backend = "maturin"
+
+[project]
+name = "s3pe"
+description = "Read, write, list and delete objects on s3.pe.gov.br (the Garage object store of Pernambuco) or any S3-style store: read_s3, write_s3 and friends, with SigV4 signing, retries and integrity checks in Rust."
+readme = "README.md"
+requires-python = ">=3.9"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [
+  { name = "André Leite", email = "leite@castlab.org" },
+  { name = "Marcos Wasiliew", email = "marcos.wasiliew@gmail.com" },
+  { name = "Hugo Vasconcelos", email = "hugo.vasconcelos@ufpe.br" },
+  { name = "Carlos Amorim", email = "carlos.agaf@ufpe.br" },
+  { name = "Diogo Bezerra", email = "diogo.bezerra@ufpe.br" },
+  { name = "Júlia Nascimento Barreto", email = "juliabarreto@gd.seplag.pe.gov.br" },
+]
+maintainers = [{ name = "André Leite", email = "leite@castlab.org" }]
+keywords = ["s3", "garage", "object storage", "pernambuco", "data"]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Intended Audience :: Developers",
+  "Intended Audience :: Science/Research",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
+  "Programming Language :: Rust",
+  "Topic :: System :: Archiving",
+  "Topic :: Internet :: WWW/HTTP",
+  "Typing :: Typed",
+]
+dynamic = ["version"]
+dependencies = []
+
+[project.optional-dependencies]
+pandas = ["pandas>=1.5", "pyarrow>=10"]
+test = ["pytest>=7"]
+
+[project.urls]
+Homepage = "https://strategicprojects.github.io/s3pe/"
+Documentation = "https://strategicprojects.github.io/s3pe/python/"
+Source = "https://github.com/StrategicProjects/s3pe"
+Issues = "https://github.com/StrategicProjects/s3pe/issues"
+"Rust crate" = "https://crates.io/crates/s3pe"
+"R package" = "https://strategicprojects.github.io/s3pe/r/"
+
+[tool.maturin]
+python-source = "python"
+module-name = "s3pe._s3pe"
+features = ["pyo3/extension-module"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

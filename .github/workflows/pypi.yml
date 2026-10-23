@@ -1,0 +1,93 @@
+name: pypi
+
+# Wheels for every platform on demand; on a tag vX.Y.Z they are also
+# published to PyPI by trusted publishing. Register once on pypi.org:
+# owner StrategicProjects, repository s3pe, workflow pypi.yml, environment
+# pypi. Do not rename this file afterwards.
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  ACTIONS_RUNNER_FORCE_ACTIONS_NODE_VERSION: node24
+
+jobs:
+  version:
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          declared=$(grep -m1 '^version' python/Cargo.toml | cut -d'"' -f2)
+          test "v$declared" = "$GITHUB_REF_NAME" || { echo "tag $GITHUB_REF_NAME, python/Cargo.toml $declared"; exit 1; }
+          crate=$(grep -m1 '^version' rust/Cargo.toml | cut -d'"' -f2)
+          test "$crate" = "$declared" || { echo "rust/Cargo.toml $crate differs"; exit 1; }
+
+  wheels:
+    name: wheel (${{ matrix.os }}, ${{ matrix.target }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: ubuntu-latest, target: x86_64 }
+          - { os: ubuntu-latest, target: aarch64 }
+          - { os: macos-latest, target: aarch64 }
+          - { os: macos-latest, target: x86_64 }
+          - { os: windows-latest, target: x64 }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: PyO3/maturin-action@v1
+        with:
+          working-directory: python
+          target: ${{ matrix.target }}
+          args: --release --out dist
+          manylinux: auto
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Test the wheel
+        if: (matrix.os == 'ubuntu-latest' && matrix.target == 'x86_64') || (matrix.os == 'macos-latest' && matrix.target == 'aarch64') || matrix.os == 'windows-latest'
+        shell: bash
+        working-directory: python
+        run: |
+          python -m pip install pytest pandas pyarrow
+          python -m pip install --no-index --find-links dist s3pe
+          python -m pytest -q
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wheel-${{ matrix.os }}-${{ matrix.target }}
+          path: python/dist
+
+  sdist:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: PyO3/maturin-action@v1
+        with:
+          working-directory: python
+          command: sdist
+          args: --out dist
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sdist
+          path: python/dist
+
+  publish:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [version, wheels, sdist]
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+      - uses: pypa/gh-action-pypi-publish@release/v1

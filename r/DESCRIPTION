@@ -1,0 +1,58 @@
+Package: s3pe
+Title: Read and Write Data on the S3 Object Store of Pernambuco
+Version: 0.1.0
+Authors@R: c(
+    person("André", "Leite", email = "leite@castlab.org", role = c("aut", "cre"),
+           comment = c(ORCID = "0000-0002-4718-9766")),
+    person("Marcos", "Wasiliew", email = "marcos.wasiliew@gmail.com", role = "aut",
+           comment = c(ORCID = "0009-0004-4694-3159")),
+    person("Hugo", "Vasconcelos", email = "hugo.vasconcelos@ufpe.br", role = "aut",
+           comment = c(ORCID = "0000-0001-6249-0920")),
+    person("Carlos", "Amorim", email = "carlos.agaf@ufpe.br", role = "aut",
+           comment = c(ORCID = "0000-0001-6315-8305")),
+    person("Diogo", "Bezerra", email = "diogo.bezerra@ufpe.br", role = "aut",
+           comment = c(ORCID = "0000-0002-1216-8674")),
+    person("Júlia", "Nascimento Barreto",
+           email = "juliabarreto@gd.seplag.pe.gov.br", role = "aut",
+           comment = c(ORCID = "0009-0004-2851-7770"))
+  )
+Description: A small, dependable client for the S3 object store of the
+    State of Pernambuco, Brazil ('s3.pe.gov.br', a 'Garage' server), and
+    for any other S3-style store. Read and write data frames and files
+    with read_s3() and write_s3(), chosen by file extension ('CSV',
+    'JSON', 'Parquet', 'RDS', 'GeoJSON'), list, inspect and delete objects.
+    Requests are signed with AWS Signature Version 4 over the real hash of
+    the payload, transient failures are retried with exponential backoff,
+    and every transfer is checked against the server's ETag and content
+    length. Credentials come from the environment and are never written
+    to disk.
+License: MIT + file LICENSE
+URL: https://github.com/StrategicProjects/s3pe,
+    https://strategicprojects.github.io/s3pe/r/
+BugReports: https://github.com/StrategicProjects/s3pe/issues
+Depends:
+    R (>= 4.1)
+Imports:
+    cli,
+    httr2 (>= 1.0.0),
+    jsonlite,
+    openssl,
+    readr,
+    rlang (>= 1.1.0),
+    tibble
+Suggests:
+    knitr,
+    nanoparquet,
+    readxl,
+    rmarkdown,
+    sf,
+    testthat (>= 3.0.0),
+    withr
+VignetteBuilder:
+    knitr
+Config/Needs/website: tidyverse/tidytemplate, pkgdown
+Config/testthat/edition: 3
+Encoding: UTF-8
+Language: en-US
+Roxygen: list(markdown = TRUE)
+Config/roxygen2/version: 8.0.0

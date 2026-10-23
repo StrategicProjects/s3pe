@@ -1,0 +1,243 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>s3pe — read and write data on s3.pe.gov.br</title>
+<meta name="description" content="The same nine verbs in R, Python, Rust and Go to read, write, list and delete objects on s3.pe.gov.br, the S3 object store of Pernambuco, or any S3-style store. SigV4 signing, retries and integrity checks built in." />
+<meta property="og:title" content="s3pe — read and write data on s3.pe.gov.br" />
+<meta property="og:description" content="read_s3, write_s3 and seven more verbs, in R, Python, Rust and Go. Credentials from the environment, format from the extension, one line per transfer." />
+<meta property="og:type" content="website" />
+<meta property="og:url" content="https://strategicprojects.github.io/s3pe/" />
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%AA%A3%3C/text%3E%3C/svg%3E" />
+<style>
+  :root {
+    --bg: #0b1020; --bg-soft: #121a33; --card: #16203f; --border: #263457;
+    --fg: #e8edf7; --muted: #9fb0d0; --brand: #1f8fff; --brand-2: #29c7ac; --accent: #ffb14e;
+    --code-bg: #0d1428; --shadow: 0 12px 40px rgba(0,0,0,.35); --radius: 16px; --maxw: 1080px;
+  }
+  @media (prefers-color-scheme: light) {
+    :root { --bg: #f6f8fe; --bg-soft: #eef2fb; --card: #ffffff; --border: #dbe3f4; --fg: #10192e; --muted: #56648a; --code-bg: #0d1428; --shadow: 0 12px 36px rgba(30,45,90,.12); }
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body { margin: 0; font: 16px/1.65 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; color: var(--fg);
+    background: radial-gradient(1100px 600px at 12% -8%, rgba(31,143,255,.20), transparent 60%), radial-gradient(900px 500px at 96% 4%, rgba(41,199,172,.16), transparent 55%), var(--bg);
+    -webkit-font-smoothing: antialiased; }
+  a { color: var(--brand-2); text-decoration: none; } a:hover { text-decoration: underline; }
+  .wrap { max-width: var(--maxw); margin: 0 auto; padding: 0 22px; }
+  header.nav { position: sticky; top: 0; z-index: 10; backdrop-filter: blur(10px); background: color-mix(in srgb, var(--bg) 78%, transparent); border-bottom: 1px solid var(--border); }
+  .nav-inner { display: flex; align-items: center; justify-content: space-between; height: 62px; }
+  .brand { display: flex; align-items: center; gap: 10px; font-weight: 800; letter-spacing: -.02em; font-size: 1.1rem; }
+  .brand .logo { font-size: 1.35rem; }
+  .nav-links { display: flex; gap: 22px; align-items: center; }
+  .nav-links a { color: var(--muted); font-weight: 600; font-size: .95rem; } .nav-links a:hover { color: var(--fg); text-decoration: none; }
+  .btn { display: inline-flex; align-items: center; gap: 8px; padding: 10px 16px; border-radius: 12px; font-weight: 700; font-size: .95rem; border: 1px solid var(--border); color: var(--fg); background: var(--card); transition: transform .12s ease, box-shadow .12s ease; }
+  .btn:hover { text-decoration: none; transform: translateY(-1px); box-shadow: var(--shadow); }
+  .btn.primary { background: linear-gradient(135deg, var(--brand), #5b73ff); color: #fff; border: none; }
+  @media (max-width: 720px) { .nav-links a.hide-sm { display: none; } }
+  .hero { padding: 74px 0 40px; }
+  .eyebrow { display: inline-flex; align-items: center; gap: 8px; font-size: .8rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--brand-2); background: color-mix(in srgb, var(--brand-2) 14%, transparent); border: 1px solid color-mix(in srgb, var(--brand-2) 30%, transparent); padding: 6px 12px; border-radius: 999px; }
+  h1 { font-size: clamp(2.2rem, 5vw, 3.4rem); line-height: 1.05; letter-spacing: -.03em; margin: 18px 0 14px; }
+  h1 .grad { background: linear-gradient(120deg, var(--brand), var(--brand-2)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .lead { font-size: 1.18rem; color: var(--muted); max-width: 46ch; }
+  .badges { display: flex; flex-wrap: wrap; gap: 8px; margin: 24px 0 26px; } .badges img { height: 22px; }
+  .cta { display: flex; flex-wrap: wrap; gap: 12px; }
+  .hero-grid { display: grid; grid-template-columns: 1.05fr .95fr; gap: 40px; align-items: center; }
+  @media (max-width: 900px) { .hero-grid { grid-template-columns: 1fr; } }
+  .term { background: var(--code-bg); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; }
+  .term-bar { display: flex; align-items: center; gap: 8px; padding: 12px 14px; border-bottom: 1px solid rgba(255,255,255,.07); }
+  .dot { width: 12px; height: 12px; border-radius: 50%; } .dot.r { background: #ff5f57; } .dot.y { background: #febc2e; } .dot.g { background: #28c840; }
+  .term-title { margin-left: 8px; color: #7f8bb0; font: 600 .82rem ui-monospace, monospace; }
+  pre { margin: 0; padding: 18px 18px 22px; overflow-x: auto; }
+  code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: .88rem; }
+  pre code { color: #d7e0f5; }
+  .c-prompt { color: #6ee7c8; } .c-flag { color: #ffb14e; } .c-cmd { color: #8ea2ff; } .c-cmt { color: #6b779b; } .c-ok { color: #59d99a; } .c-str { color: #ffb14e; } .c-kw { color: #c9a5ff; }
+  section { padding: 56px 0; }
+  section.alt { background: var(--bg-soft); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+  h2 { font-size: clamp(1.6rem, 3.4vw, 2.2rem); letter-spacing: -.02em; margin: 0 0 8px; }
+  .sub { color: var(--muted); margin: 0 0 30px; max-width: 62ch; }
+  .grid { display: grid; gap: 18px; } .grid.f3 { grid-template-columns: repeat(3, 1fr); } .grid.f2 { grid-template-columns: repeat(2, 1fr); } .grid.f4 { grid-template-columns: repeat(4, 1fr); }
+  @media (max-width: 860px) { .grid.f3, .grid.f2, .grid.f4 { grid-template-columns: 1fr; } }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 22px; transition: transform .14s ease, box-shadow .14s ease, border-color .14s ease; }
+  .card:hover { transform: translateY(-3px); box-shadow: var(--shadow); border-color: color-mix(in srgb, var(--brand) 40%, var(--border)); }
+  .card .ic { font-size: 1.5rem; } .card h3 { margin: 12px 0 6px; font-size: 1.1rem; letter-spacing: -.01em; } .card p { margin: 0; color: var(--muted); font-size: .96rem; }
+  .card .links { margin-top: 12px; display: flex; gap: 14px; flex-wrap: wrap; font-weight: 700; font-size: .9rem; }
+  .card pre { padding: 12px 14px; margin-top: 12px; background: var(--code-bg); border-radius: 10px; }
+  .panel { background: var(--code-bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 6px; }
+  .panel h4 { margin: 10px 14px 0; color: #7f8bb0; font: 700 .8rem ui-monospace, monospace; text-transform: uppercase; letter-spacing: .08em; }
+  .note { color: var(--muted); font-size: .9rem; margin-top: 10px; }
+  table.cmp { width: 100%; border-collapse: collapse; font-size: .94rem; }
+  table.cmp th, table.cmp td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  table.cmp th { color: var(--muted); font-weight: 700; }
+  table.cmp code { background: color-mix(in srgb, var(--brand) 12%, transparent); padding: 2px 6px; border-radius: 6px; font-size: .86rem; color: var(--fg); }
+  .scroll { overflow-x: auto; }
+  .steps { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+  @media (max-width: 860px) { .steps { grid-template-columns: 1fr 1fr; } }
+  .step { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 16px; }
+  .step .n { font: 800 .8rem ui-monospace, monospace; color: var(--brand-2); } .step h4 { margin: 6px 0 4px; font-size: 1rem; } .step p { margin: 0; color: var(--muted); font-size: .9rem; }
+  footer { padding: 40px 0 60px; color: var(--muted); border-top: 1px solid var(--border); }
+  .foot-inner { display: flex; flex-wrap: wrap; gap: 16px; justify-content: space-between; align-items: center; }
+  .foot-links { display: flex; gap: 18px; flex-wrap: wrap; }
+</style>
+</head>
+<body>
+<header class="nav">
+  <div class="wrap nav-inner">
+    <div class="brand"><span class="logo">🪣</span> s3pe</div>
+    <nav class="nav-links">
+      <a class="hide-sm" href="#editions">Editions</a>
+      <a class="hide-sm" href="#verbs">Verbs</a>
+      <a class="hide-sm" href="#how">How it works</a>
+      <a class="hide-sm" href="#config">Configuration</a>
+      <a class="hide-sm" href="r/">R docs</a>
+      <a class="hide-sm" href="python/">Python docs</a>
+      <a class="hide-sm" href="rust/s3pe/">Rust docs</a>
+      <a class="btn" href="https://github.com/StrategicProjects/s3pe">GitHub ↗</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <section class="hero">
+    <div class="wrap hero-grid">
+      <div>
+        <span class="eyebrow">◆ R · Python · Rust · Go</span>
+        <h1>Data in and out of <span class="grad">s3.pe.gov.br</span>, in one line.</h1>
+        <p class="lead">The same nine verbs in four languages for the S3 object store of Pernambuco, or any S3-style store. Credentials from the environment, format from the extension, every transfer signed, retried and checked.</p>
+        <div class="badges">
+          <a href="https://github.com/StrategicProjects/s3pe/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/StrategicProjects/s3pe/actions/workflows/ci.yml/badge.svg"></a>
+          <a href="https://CRAN.R-project.org/package=s3pe"><img alt="CRAN" src="https://www.r-pkg.org/badges/version/s3pe"></a>
+          <a href="https://pypi.org/project/s3pe/"><img alt="PyPI" src="https://img.shields.io/pypi/v/s3pe.svg"></a>
+          <a href="https://crates.io/crates/s3pe"><img alt="crates.io" src="https://img.shields.io/crates/v/s3pe.svg"></a>
+          <a href="https://pkg.go.dev/github.com/StrategicProjects/s3pe"><img alt="Go Reference" src="https://pkg.go.dev/badge/github.com/StrategicProjects/s3pe.svg"></a>
+          <a href="https://github.com/StrategicProjects/s3pe/blob/main/LICENSE"><img alt="License MIT" src="https://img.shields.io/badge/license-MIT-blue.svg"></a>
+        </div>
+        <div class="cta">
+          <a class="btn primary" href="#editions">Get started →</a>
+          <a class="btn" href="r/">R reference</a>
+          <a class="btn" href="https://github.com/StrategicProjects/s3pe">GitHub ★</a>
+        </div>
+      </div>
+      <div class="term" aria-hidden="true">
+        <div class="term-bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="term-title">R · Python · shell</span></div>
+<pre><code><span class="c-cmt"># R</span>
+<span class="c-kw">library</span>(s3pe)
+meta &lt;- <span class="c-cmd">read_s3</span>(<span class="c-str">"s3://iaempe/dados/metadata.json"</span>)
+<span class="c-ok">↓ s3://iaempe/dados/metadata.json (1.2 kB, 0.2 s)</span>
+<span class="c-cmd">write_s3</span>(icms, <span class="c-str">"s3://iaempe/nota/icms.parquet"</span>)
+<span class="c-ok">↑ s3://iaempe/nota/icms.parquet (84.1 kB, 0.3 s)</span>
+
+<span class="c-cmt"># Python</span>
+df = s3pe.<span class="c-cmd">read_s3</span>(<span class="c-str">"series/estado/icms.csv.gz"</span>, bucket=<span class="c-str">"horizonte-fiscal"</span>)
+
+<span class="c-cmt"># shell</span>
+<span class="c-prompt">$</span> <span class="c-cmd">s3pe</span> put painel.parquet s3://iaempe/etl/
+<span class="c-ok">↑ painel.parquet → s3://iaempe/etl/painel.parquet (12.3 MB, 0.8 s)</span></code></pre>
+      </div>
+    </div>
+  </section>
+
+  <section id="editions" class="alt">
+    <div class="wrap">
+      <h2>Four editions, one behaviour</h2>
+      <p class="sub">Pick the language of the project. Everything else is the same: defaults, signing, retries, integrity checks, log lines and error kinds. One repository, one version, one changelog.</p>
+      <div class="grid f4">
+        <div class="card"><div class="ic">📊</div><h3>R</h3><p>Pure R on httr2 and cli, tidyverse style. Tibbles from CSV and Parquet, lists from JSON, sf from GeoJSON.</p>
+<pre><code>install.packages(<span class="c-str">"s3pe"</span>)</code></pre>
+          <div class="links"><a href="r/">Reference</a><a href="https://CRAN.R-project.org/package=s3pe">CRAN</a></div></div>
+        <div class="card"><div class="ic">🐍</div><h3>Python</h3><p>A binding on the Rust core, wheels for every platform. DataFrames with pandas, dicts from JSON, bytes otherwise.</p>
+<pre><code>pip install <span class="c-str">"s3pe[pandas]"</span></code></pre>
+          <div class="links"><a href="python/">Reference</a><a href="https://pypi.org/project/s3pe/">PyPI</a></div></div>
+        <div class="card"><div class="ic">🦀</div><h3>Rust</h3><p>The core: SigV4, retries and checks over ureq and rustls. Also the <code>s3pe</code> command line.</p>
+<pre><code>cargo add s3pe
+cargo install s3pe</code></pre>
+          <div class="links"><a href="rust/s3pe/">Reference</a><a href="https://crates.io/crates/s3pe">crates.io</a></div></div>
+        <div class="card"><div class="ic">🐹</div><h3>Go</h3><p>Standard library only, context on every call, typed errors for <code>errors.Is</code>.</p>
+<pre><code>go get github.com/StrategicProjects/s3pe</code></pre>
+          <div class="links"><a href="https://pkg.go.dev/github.com/StrategicProjects/s3pe">Reference</a></div></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="verbs">
+    <div class="wrap">
+      <h2>The nine verbs</h2>
+      <p class="sub">A key is <code>s3://bucket/key</code>, or a bare key when the bucket is configured. Nothing else to learn.</p>
+      <div class="scroll"><table class="cmp">
+        <thead><tr><th>Verb</th><th>Does</th><th>R and Python return</th></tr></thead>
+        <tbody>
+          <tr><td><code>read_s3</code></td><td>GET an object into memory</td><td>decoded by extension: tibble / DataFrame, list / dict, text, raw bytes</td></tr>
+          <tr><td><code>write_s3</code></td><td>PUT an object from memory</td><td>encoded by extension: CSV, CSV.GZ, TSV, JSON, GeoJSON, Parquet, XLSX, RDS, text, bytes</td></tr>
+          <tr><td><code>download_s3</code></td><td>GET to a file, streaming</td><td>written as <code>.s3pe-part</code>, renamed when complete</td></tr>
+          <tr><td><code>upload_s3</code></td><td>PUT from a file, streaming</td><td>content type guessed from the key</td></tr>
+          <tr><td><code>list_s3</code></td><td>every object under a prefix, all pages</td><td>tibble / list of records: key, size, last_modified, etag</td></tr>
+          <tr><td><code>exists_s3</code></td><td>HEAD, 404 as false</td><td>logical / bool</td></tr>
+          <tr><td><code>head_s3</code></td><td>HEAD: size, type, date, ETag</td><td>one record, or nothing</td></tr>
+          <tr><td><code>delete_s3</code></td><td>DELETE, idempotent</td><td>nothing</td></tr>
+          <tr><td><code>buckets_s3</code></td><td>the buckets the credentials see</td><td>names and creation dates</td></tr>
+        </tbody>
+      </table></div>
+      <p class="note">Rust and Go expose the same verbs (<code>s3pe::read_s3</code>, <code>s3pe.ReadS3</code>) and a <code>Client</code> for explicit settings; R has <code>s3_config()</code>.</p>
+    </div>
+  </section>
+
+  <section id="how" class="alt">
+    <div class="wrap">
+      <h2>What happens in every call</h2>
+      <p class="sub">The parts that make the difference between "it usually works" and "it worked, and we know it did".</p>
+      <div class="steps">
+        <div class="step"><div class="n">01</div><h4>Sign</h4><p>AWS Signature V4 over the real SHA-256 of the payload. No unsigned payloads, no <code>aws-chunked</code> (Garage rejects it). The four signers reproduce the AWS documentation vector.</p></div>
+        <div class="step"><div class="n">02</div><h4>Retry</h4><p>Connection failures and HTTP 429, 500, 502, 503, 504: three tries, 1 s then 2 s. Never on other 4xx.</p></div>
+        <div class="step"><div class="n">03</div><h4>Verify</h4><p>After an upload the server's ETag against the local MD5; after a download the byte count and the MD5 of what arrived.</p></div>
+        <div class="step"><div class="n">04</div><h4>Report</h4><p>One line per transfer, silenced with <code>S3PE_QUIET=1</code>. Errors are typed: not found, access denied, HTTP, transport, configuration, integrity.</p></div>
+      </div>
+      <div class="grid f2" style="margin-top:18px">
+        <div class="card"><div class="ic">🧪</div><h3>Tested three ways</h3><p>Each edition runs against a local fake S3 that recomputes and checks every signature, against the AWS documentation vector, and against s3.pe.gov.br itself when <code>S3PE_TEST_BUCKET</code> is set.</p></div>
+        <div class="card"><div class="ic">📄</div><h3>Decisions on record</h3><p>Why path-style, why our own signer, why no multipart yet: <a href="https://github.com/StrategicProjects/s3pe/blob/main/DESIGN.md">DESIGN.md</a> keeps the reasons, D1 to D11.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="config">
+    <div class="wrap">
+      <h2>Configuration</h2>
+      <p class="sub">Argument, then environment, then default. Two variables are enough on a machine that talks to s3.pe.gov.br.</p>
+      <div class="grid f2">
+        <div>
+          <div class="panel"><h4>~/.Renviron, .env or the shell</h4>
+<pre><code>AWS_ACCESS_KEY_ID=GK...
+AWS_SECRET_ACCESS_KEY=...
+S3PE_BUCKET=iaempe                 <span class="c-cmt"># optional: bare keys</span>
+<span class="c-cmt"># S3PE_ENDPOINT=http://127.0.0.1:9003   inside the server</span></code></pre>
+          </div>
+          <p class="note">Never put the key in a script or a repository. Inside the condepe server the endpoint is local; from anywhere else the default <code>https://s3.pe.gov.br</code> applies.</p>
+        </div>
+        <div class="scroll"><table class="cmp">
+          <thead><tr><th>Setting</th><th>Environment</th><th>Default</th></tr></thead>
+          <tbody>
+            <tr><td>endpoint</td><td><code>S3PE_ENDPOINT</code>, <code>AWS_ENDPOINT_URL</code></td><td><code>https://s3.pe.gov.br</code></td></tr>
+            <tr><td>region</td><td><code>AWS_REGION</code>, <code>AWS_DEFAULT_REGION</code></td><td><code>us-east-1</code></td></tr>
+            <tr><td>credentials</td><td><code>AWS_ACCESS_KEY_ID</code>, <code>AWS_SECRET_ACCESS_KEY</code></td><td>required</td></tr>
+            <tr><td>bucket</td><td><code>S3PE_BUCKET</code></td><td>none: use <code>s3://bucket/key</code></td></tr>
+            <tr><td>quiet</td><td><code>S3PE_QUIET=1</code></td><td>one line per transfer</td></tr>
+          </tbody>
+        </table></div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap foot-inner">
+    <div>s3pe · MIT · André Leite, Marcos Wasiliew, Hugo Vasconcelos, Carlos Amorim, Diogo Bezerra, Júlia Nascimento Barreto</div>
+    <div class="foot-links">
+      <a href="https://github.com/StrategicProjects/s3pe">GitHub</a>
+      <a href="https://github.com/StrategicProjects/s3pe/blob/main/CHANGELOG.md">Changelog</a>
+      <a href="https://github.com/StrategicProjects/s3pe/blob/main/DESIGN.md">Design</a>
+      <a href="https://github.com/StrategicProjects/s3pe/blob/main/README.pt-BR.md">Português</a>
+    </div>
+  </div>
+</footer>
+</body>
+</html>

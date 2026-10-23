@@ -1,0 +1,27 @@
+# Rust
+rust/target/
+python/target/
+# Python
+python/.venv/
+python/dist/
+python/**/__pycache__/
+python/**/*.so
+python/.pytest_cache/
+python/.mypy_cache/
+# R
+r/.Rproj.user
+r/.Rhistory
+r/.RData
+r/docs/
+r/inst/doc/
+r/*.Rcheck/
+r/*.tar.gz
+r/.Rproj.user/
+# site build
+site/r/
+site/rust/
+site/python/
+# local
+.DS_Store
+CLAUDE.md
+.claude/

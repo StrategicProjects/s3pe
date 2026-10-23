@@ -1,0 +1,14 @@
+^\.github$
+^\.claude$
+^\.Rcheck$
+^.*\.Rcheck$
+^_pkgdown\.yml$
+^docs$
+^pkgdown$
+^LICENSE\.md$
+^cran-comments\.md$
+^CLAUDE\.md$
+^.*\.Rproj$
+^\.Rproj\.user$
+^CRAN-SUBMISSION$
+^\.gitignore$

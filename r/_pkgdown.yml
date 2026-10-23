@@ -1,0 +1,59 @@
+url: https://strategicprojects.github.io/s3pe/r/
+
+template:
+  package: tidytemplate
+  bootstrap: 5
+  bslib:
+    primary: "#1f5aa8"
+
+home:
+  title: s3pe — the S3 store of Pernambuco from R
+  description: >
+    Read and write data on s3.pe.gov.br (or any S3-style store) with
+    signed, retried and verified requests.
+
+navbar:
+  structure:
+    right: [search, github, editions]
+  components:
+    editions:
+      text: Other editions
+      menu:
+      - text: Python
+        href: https://strategicprojects.github.io/s3pe/python/
+      - text: Rust
+        href: https://docs.rs/s3pe
+      - text: Go
+        href: https://pkg.go.dev/github.com/StrategicProjects/s3pe
+
+reference:
+- title: Read and write
+  desc: R objects in, R objects out. The format follows the key's extension.
+  contents:
+  - read_s3
+  - write_s3
+- title: Files
+  contents:
+  - download_s3
+  - upload_s3
+- title: Bucket operations
+  contents:
+  - list_s3
+  - head_s3
+  - exists_s3
+  - delete_s3
+  - buckets_s3
+- title: Configuration
+  contents:
+  - s3_config
+  - use_bucket
+  - s3pe-package
+
+articles:
+- title: Get started
+  navbar: ~
+  contents:
+  - s3pe
+
+news:
+  releases: []

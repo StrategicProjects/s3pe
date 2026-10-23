@@ -1,0 +1,76 @@
+name: pages
+
+# Publishes to GitHub Pages on every push to main: the landing page in
+# site/, the pkgdown site of the R package under /r, the rustdoc of the
+# crate under /rust and the pdoc of the Python package under /python.
+# Pages must be set to "GitHub Actions" as its source (Settings → Pages).
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+env:
+  ACTIONS_RUNNER_FORCE_ACTIONS_NODE_VERSION: node24
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: |
+            rust
+            python
+      - name: Rust API reference
+        run: |
+          cd rust && cargo doc --no-deps
+          rm -rf ../site/rust && cp -R target/doc ../site/rust
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Python API reference
+        run: |
+          python -m pip install maturin pdoc
+          python -m pip install ./python
+          pdoc s3pe --docformat restructuredtext --no-search -o site/python
+      - uses: r-lib/actions/setup-pandoc@v2
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          use-public-rspm: true
+      - uses: r-lib/actions/setup-r-dependencies@v2
+        with:
+          working-directory: r
+          extra-packages: any::pkgdown, local::.
+          needs: website
+      - name: R package site
+        run: pkgdown::build_site_github_pages(pkg = "r", dest_dir = "../site/r", new_process = FALSE, install = FALSE)
+        shell: Rscript {0}
+      - run: touch site/.nojekyll
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

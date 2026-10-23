@@ -1,0 +1,48 @@
+[package]
+name = "s3pe"
+version = "0.1.0"
+authors = [
+    "André Leite <leite@castlab.org>",
+    "Marcos Wasiliew <marcos.wasiliew@gmail.com>",
+    "Hugo Vasconcelos <hugo.vasconcelos@ufpe.br>",
+    "Carlos Amorim <carlos.agaf@ufpe.br>",
+    "Diogo Bezerra <diogo.bezerra@ufpe.br>",
+    "Júlia Nascimento Barreto <juliabarreto@gd.seplag.pe.gov.br>",
+]
+edition = "2021"
+rust-version = "1.85"
+description = "Small, dependable S3 client and CLI: read, write, list and delete objects on s3.pe.gov.br (Garage) or any S3-style store, with SigV4 signing, retries and integrity checks"
+license = "MIT"
+repository = "https://github.com/StrategicProjects/s3pe"
+homepage = "https://strategicprojects.github.io/s3pe/"
+documentation = "https://docs.rs/s3pe"
+readme = "README.md"
+keywords = ["s3", "garage", "object-storage", "cli", "pernambuco"]
+categories = ["api-bindings", "command-line-utilities", "web-programming::http-client"]
+exclude = ["tests/live.rs"]
+
+[dependencies]
+ureq = { version = "3.5", default-features = false, features = ["rustls"] }
+hmac = "0.12"
+sha2 = "0.10"
+md-5 = "0.10"
+hex = "0.4"
+roxmltree = "0.21"
+log = "0.4"
+clap = { version = "4.5", features = ["derive"], optional = true }
+
+[features]
+default = ["cli"]
+cli = ["dep:clap"]
+
+[[bin]]
+name = "s3pe"
+path = "src/bin/s3pe.rs"
+required-features = ["cli"]
+
+[dev-dependencies]
+
+[profile.release]
+lto = "fat"
+codegen-units = 1
+strip = true

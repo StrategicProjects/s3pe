@@ -1,0 +1,35 @@
+cff-version: 1.2.0
+message: "If you use s3pe, please cite it using this metadata."
+title: "s3pe: read and write data on the S3 object store of Pernambuco"
+type: software
+authors:
+  - family-names: Leite
+    given-names: "André"
+    affiliation: "Universidade Federal de Pernambuco"
+    email: leite@castlab.org
+    orcid: "https://orcid.org/0000-0002-4718-9766"
+  - family-names: Wasiliew
+    given-names: Marcos
+    email: marcos.wasiliew@gmail.com
+    orcid: "https://orcid.org/0009-0004-4694-3159"
+  - family-names: Vasconcelos
+    given-names: Hugo
+    email: hugo.vasconcelos@ufpe.br
+    orcid: "https://orcid.org/0000-0001-6249-0920"
+  - family-names: Amorim
+    given-names: Carlos
+    email: carlos.agaf@ufpe.br
+    orcid: "https://orcid.org/0000-0001-6315-8305"
+  - family-names: Bezerra
+    given-names: Diogo
+    email: diogo.bezerra@ufpe.br
+    orcid: "https://orcid.org/0000-0002-1216-8674"
+  - family-names: Nascimento Barreto
+    given-names: "Júlia"
+    email: juliabarreto@gd.seplag.pe.gov.br
+    orcid: "https://orcid.org/0009-0004-2851-7770"
+repository-code: "https://github.com/StrategicProjects/s3pe"
+url: "https://strategicprojects.github.io/s3pe/"
+license: MIT
+version: 0.1.0
+date-released: 2026-10-23

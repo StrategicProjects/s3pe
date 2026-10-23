@@ -1,0 +1,169 @@
+---
+title: "Get started with s3pe"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Get started with s3pe}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>", eval = FALSE)
+```
+
+The State of Pernambuco publishes data for its analysts on an S3 object
+store, `s3.pe.gov.br`. Each project has a bucket (`iaempe`,
+`horizonte-fiscal`, ...) and a key pair that reads it, sometimes writes
+it. `s3pe` is the client: nine verbs that move R objects and files in and
+out, with every request signed, retried on transient failures and
+verified against the server's checksum.
+
+This vignette is not evaluated: the store needs credentials.
+
+## Credentials
+
+Put the key pair in `~/.Renviron` and restart R. `S3PE_BUCKET` is the
+bucket used when you do not say which one.
+
+```
+AWS_ACCESS_KEY_ID=GK...
+AWS_SECRET_ACCESS_KEY=...
+S3PE_BUCKET=iaempe
+```
+
+`s3_config()` shows what the package resolved (the secret is never
+printed). Every verb takes a `config` argument, so you can also build one
+explicitly, for another endpoint or another key:
+
+```{r}
+library(s3pe)
+s3_config()
+
+cfg <- s3_config(bucket = "horizonte-fiscal",
+                 access_key = Sys.getenv("HF_KEY"),
+                 secret_key = Sys.getenv("HF_SECRET"))
+```
+
+Keys are either relative to the bucket or full `s3://bucket/key` URLs; the
+URL wins.
+
+## Reading
+
+`read_s3()` chooses the reader by the key's extension:
+
+```{r}
+# JSON -> list
+meta <- read_s3("dados/metadata.json")
+meta$ultimo_mes
+
+# gzipped CSV -> tibble (readr); `...` reaches the reader
+icms <- read_s3("s3://horizonte-fiscal/series/estado/icms.csv.gz",
+                col_types = "Dncl")
+
+# GeoJSON -> sf, when sf is installed
+municipios <- read_s3("dados/pe_municipios.geojson")
+
+# Parquet -> data frame (nanoparquet)
+painel <- read_s3("etl/painel_iaempe.parquet")
+
+# anything else -> raw bytes; or ask for them
+png <- read_s3("nota_tecnica/figura1.png")
+txt <- read_s3("dados/metadata.json", format = "text")
+```
+
+The buckets of the platform upload a manifest last. If `metadata.json`
+says the batch is 2026-08, every file of that batch is already there:
+read it first and use it as the version of what you cache.
+
+```{r}
+cache <- "iaem-cache.rds"
+meta <- read_s3("dados/metadata.json")
+if (!file.exists(cache) || readRDS(cache)$ultimo_mes != meta$ultimo_mes) {
+  batch <- list(
+    ultimo_mes = meta$ultimo_mes,
+    series = read_s3("dados/series.json"),
+    ranking = read_s3("dados/ranking.json")
+  )
+  saveRDS(batch, cache)
+}
+```
+
+## Writing
+
+`write_s3()` is the reverse: the extension decides the format and the
+content type. Use a prefix of your own (`dados/` belongs to the
+automatic mirror, which may overwrite it).
+
+```{r}
+write_s3(painel, "nota_tecnica/painel.parquet")
+write_s3(painel, "nota_tecnica/painel.csv.gz")
+write_s3(list(gerado_em = Sys.time(), linhas = nrow(painel)),
+         "nota_tecnica/manifest.json", pretty = TRUE)
+write_s3(modelo, "nota_tecnica/modelo.rds")
+write_s3(c("# Nota técnica", "", "Texto..."), "nota_tecnica/README.md")
+```
+
+Follow the platform's convention: upload the data first, the manifest
+last.
+
+## Files
+
+`upload_s3()` and `download_s3()` move files without reading them into R.
+A key ending in `/` gets the file's name appended; downloads are written
+to a `.s3pe-part` file and renamed when complete and verified.
+
+```{r}
+upload_s3("output/figura1.png", "nota_tecnica/")
+download_s3("dados/pe_municipios.geojson", "data/pe_municipios.geojson",
+            overwrite = TRUE)
+```
+
+## The rest of the bucket
+
+```{r}
+list_s3("dados/")                     # tibble: key, size, last_modified, etag
+head_s3("dados/metadata.json")        # one row, or NULL
+exists_s3("dados/metadata.json")      # TRUE/FALSE
+delete_s3("nota_tecnica/rascunho.csv")
+buckets_s3()
+```
+
+## When things go wrong
+
+Every failure is an error with a class, so a pipeline stops by default
+and you can catch exactly what you expect:
+
+```{r}
+meta <- tryCatch(
+  read_s3("dados/metadata.json"),
+  s3pe_error_not_found = function(e) NULL
+)
+```
+
+- `s3pe_error_config`: no credentials, no bucket, bad endpoint.
+- `s3pe_error_not_found` (404), `s3pe_error_access` (403),
+  `s3pe_error_http` (other statuses, with `$status` and `$code`).
+- `s3pe_error_transport`: the server could not be reached, after three
+  attempts with a 1 s and a 2 s pause.
+- `s3pe_error_integrity`: the bytes that arrived are not the bytes that
+  were sent.
+
+Transfers print one line each (`↑ s3://iaempe/nota_tecnica/painel.parquet
+(12.3 MB, 0.8 s)`); silence them with `options(s3pe.quiet = TRUE)` or
+`S3PE_QUIET=1`.
+
+## Inside the condepe server
+
+The server that hosts the store talks to it on the loopback interface:
+
+```{r}
+options(s3pe.endpoint = "http://127.0.0.1:9003")
+```
+
+## Other editions
+
+The same verbs exist in Python (`pip install s3pe`), Rust
+(`cargo install s3pe`, with the `s3pe` command line) and Go
+(`go get github.com/StrategicProjects/s3pe`). They share one
+specification and one test vector, so a key written by one is read by
+the others.
