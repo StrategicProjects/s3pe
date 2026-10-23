@@ -6,8 +6,9 @@ any S3-style store.
 
 ## R CMD check results
 
-0 errors | 0 warnings | 0 notes locally (macOS, R 4.6.0) and on GitHub
-Actions (Windows, macOS, Ubuntu release/devel/oldrel-1).
+0 errors | 0 warnings | 1 note locally (macOS, R 4.6.0, `--as-cran`): the
+note is "New submission". 0 errors | 0 warnings | 0 notes on GitHub Actions
+(Windows, macOS, Ubuntu release/devel/oldrel-1).
 
 ## Reverse dependencies
 
