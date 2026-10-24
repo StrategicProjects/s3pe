@@ -10,9 +10,7 @@ use std::io::{Read, Write};
 use std::path::Path;
 use std::time::{Duration, Instant};
 
-/// Endpoint used when none is given: Pernambuco's Garage server.
-pub const DEFAULT_ENDPOINT: &str = "https://s3.pe.gov.br";
-/// Signing region used when none is given (the `s3_region` of that server).
+/// Signing region used when none is given.
 pub const DEFAULT_REGION: &str = "us-east-1";
 /// Seconds a single call may take before it is abandoned.
 pub const DEFAULT_TIMEOUT: Duration = Duration::from_secs(300);
@@ -91,7 +89,7 @@ impl ClientBuilder {
         self.endpoint = Some(endpoint.into());
         self
     }
-    /// Signing region (`us-east-1` for the Garage of Pernambuco).
+    /// Signing region (default `us-east-1`; Garage and MinIO accept whatever they are configured with).
     pub fn region(mut self, region: impl Into<String>) -> Self {
         self.region = Some(region.into());
         self
@@ -134,7 +132,13 @@ impl ClientBuilder {
             .endpoint
             .or_else(|| env("S3PE_ENDPOINT"))
             .or_else(|| env("AWS_ENDPOINT_URL"))
-            .unwrap_or_else(|| DEFAULT_ENDPOINT.to_string());
+            .ok_or_else(|| {
+                Error::Config(
+                    "no endpoint: set S3PE_ENDPOINT (or AWS_ENDPOINT_URL) to https://host[:port] \
+                     or pass it to the builder"
+                        .into(),
+                )
+            })?;
         let (endpoint, host) = parse_endpoint(&endpoint)?;
         let region = self
             .region
@@ -870,8 +874,8 @@ mod tests {
     #[test]
     fn endpoints() {
         assert_eq!(
-            parse_endpoint("https://s3.pe.gov.br/").unwrap(),
-            ("https://s3.pe.gov.br".into(), "s3.pe.gov.br".into())
+            parse_endpoint("https://s3.example.org/").unwrap(),
+            ("https://s3.example.org".into(), "s3.example.org".into())
         );
         assert_eq!(
             parse_endpoint("http://127.0.0.1:9003").unwrap(),
@@ -881,8 +885,8 @@ mod tests {
             parse_endpoint("https://x.org:443").unwrap(),
             ("https://x.org".into(), "x.org".into())
         );
-        assert!(parse_endpoint("s3.pe.gov.br").is_err());
-        assert!(parse_endpoint("https://s3.pe.gov.br/bucket").is_err());
+        assert!(parse_endpoint("s3.example.org").is_err());
+        assert!(parse_endpoint("https://s3.example.org/bucket").is_err());
     }
 
     #[test]
@@ -891,7 +895,7 @@ mod tests {
         assert_eq!(format_size(999), "999 B");
         assert_eq!(format_size(1234), "1.2 kB");
         assert_eq!(format_size(12_345_678), "12.3 MB");
-        assert_eq!(content_type_for("dados/series.csv.gz"), "application/gzip");
+        assert_eq!(content_type_for("raw/series.csv.gz"), "application/gzip");
         assert_eq!(
             content_type_for("a/b.PARQUET"),
             "application/vnd.apache.parquet"
@@ -903,17 +907,18 @@ mod tests {
     #[test]
     fn resolve_keys() {
         let c = Client::builder()
+            .endpoint("https://s3.example.org")
             .credentials("k", "s")
-            .bucket("iaempe")
+            .bucket("data")
             .build()
             .unwrap();
         assert_eq!(
-            c.resolve("dados/x.json").unwrap(),
-            ("iaempe".into(), "dados/x.json".into())
+            c.resolve("raw/x.json").unwrap(),
+            ("data".into(), "raw/x.json".into())
         );
         assert_eq!(
-            c.resolve("/dados/x.json").unwrap(),
-            ("iaempe".into(), "dados/x.json".into())
+            c.resolve("/raw/x.json").unwrap(),
+            ("data".into(), "raw/x.json".into())
         );
         assert_eq!(
             c.resolve("s3://other/k").unwrap(),
@@ -924,7 +929,17 @@ mod tests {
             ("other".into(), "".into())
         );
         assert!(c.resolve("s3:///k").is_err());
-        let no_bucket = Client::builder().credentials("k", "s").build().unwrap();
+        let no_bucket = Client::builder()
+            .endpoint("https://s3.example.org")
+            .credentials("k", "s")
+            .build()
+            .unwrap();
         assert!(matches!(no_bucket.resolve("k"), Err(Error::Config(_))));
+        std::env::remove_var("S3PE_ENDPOINT");
+        std::env::remove_var("AWS_ENDPOINT_URL");
+        assert!(matches!(
+            Client::builder().credentials("k", "s").build(),
+            Err(Error::Config(_))
+        ));
     }
 }

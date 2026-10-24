@@ -1,15 +1,15 @@
-"""s3pe: read and write data on s3.pe.gov.br, or any S3-style store.
+"""s3pe: read and write data on any S3-compatible object store.
 
 Nine verbs over a Rust core: ``read_s3``, ``write_s3``, ``download_s3``,
 ``upload_s3``, ``list_s3``, ``delete_s3``, ``exists_s3``, ``head_s3`` and
-``buckets_s3``. Credentials and endpoint come from the environment
-(``AWS_ACCESS_KEY_ID``, ``AWS_SECRET_ACCESS_KEY``, ``S3PE_ENDPOINT``,
+``buckets_s3``. Endpoint and credentials come from the environment
+(``S3PE_ENDPOINT``, ``AWS_ACCESS_KEY_ID``, ``AWS_SECRET_ACCESS_KEY``,
 ``S3PE_BUCKET``); a :class:`Client` takes them explicitly.
 
     >>> import s3pe
-    >>> meta = s3pe.read_s3("s3://iaempe/dados/metadata.json")   # dict
-    >>> df = s3pe.read_s3("etl/painel.parquet", bucket="iaempe")  # DataFrame
-    >>> s3pe.write_s3(df, "s3://iaempe/nota/painel.csv")
+    >>> meta = s3pe.read_s3("s3://my-bucket/data/manifest.json")   # dict
+    >>> df = s3pe.read_s3("etl/sales.parquet", bucket="my-bucket")  # DataFrame
+    >>> s3pe.write_s3(df, "s3://my-bucket/reports/sales.csv")
 
 The format follows the key's extension (``.json``, ``.csv``, ``.csv.gz``,
 ``.tsv``, ``.parquet``, ``.xlsx``, ``.geojson``, text files; anything else
@@ -37,7 +37,6 @@ from typing import Any, Optional, Union
 
 from . import _s3pe
 from ._s3pe import (
-    DEFAULT_ENDPOINT,
     DEFAULT_REGION,
     AccessDeniedError,
     ConfigError,
@@ -78,7 +77,6 @@ __all__ = [
     "AccessDeniedError",
     "HttpError",
     "IntegrityError",
-    "DEFAULT_ENDPOINT",
     "DEFAULT_REGION",
     "__version__",
 ]
@@ -285,8 +283,8 @@ class Client:
     Every argument left as ``None`` comes from the environment
     (``S3PE_ENDPOINT``/``AWS_ENDPOINT_URL``, ``AWS_REGION``,
     ``AWS_ACCESS_KEY_ID``, ``AWS_SECRET_ACCESS_KEY``, ``AWS_SESSION_TOKEN``,
-    ``S3PE_BUCKET``), then from the defaults (``https://s3.pe.gov.br``,
-    ``us-east-1``, 300 s, 3 tries). Keys are relative to ``bucket`` or full
+    ``S3PE_BUCKET``), then from the defaults (``us-east-1``, 300 s, 3
+    tries). The endpoint and the credentials are required. Keys are relative to ``bucket`` or full
     ``s3://bucket/key`` URLs.
     """
 
@@ -432,8 +430,8 @@ def _client() -> Client:
 
 
 def read_s3(key: str, bucket: Optional[str] = None, *, format: Optional[str] = None, **kwargs: Any) -> Any:
-    """Reads and decodes an object: ``read_s3("s3://iaempe/dados/metadata.json")``
-    or ``read_s3("dados/metadata.json", bucket="iaempe")``."""
+    """Reads and decodes an object: ``read_s3("s3://my-bucket/data/manifest.json")``
+    or ``read_s3("data/manifest.json", bucket="my-bucket")``."""
     return _client().read(_with_bucket(key, bucket), format=format, **kwargs)
 
 

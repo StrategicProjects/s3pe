@@ -12,16 +12,16 @@ import (
 // Credentials and endpoint come from the environment; keys are s3:// URLs.
 func Example() {
 	ctx := context.Background()
-	manifest, err := s3pe.ReadS3(ctx, "s3://iaempe/dados/metadata.json")
+	manifest, err := s3pe.ReadS3(ctx, "s3://my-bucket/data/manifest.json")
 	if err != nil {
 		log.Fatal(err)
 	}
 	fmt.Println(len(manifest))
 
-	if _, err := s3pe.WriteS3(ctx, "s3://iaempe/nota/figura1.csv", []byte("a,b\n1,2\n"), ""); err != nil {
+	if _, err := s3pe.WriteS3(ctx, "s3://my-bucket/reports/table1.csv", []byte("a,b\n1,2\n"), ""); err != nil {
 		log.Fatal(err)
 	}
-	objects, err := s3pe.ListS3(ctx, "s3://iaempe/dados/")
+	objects, err := s3pe.ListS3(ctx, "s3://my-bucket/data/")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -33,10 +33,10 @@ func Example() {
 // An explicit client, with a default bucket, keeps the keys short.
 func ExampleNew() {
 	s3, err := s3pe.New(s3pe.Config{
-		Endpoint:  "https://s3.pe.gov.br",
+		Endpoint:  "https://s3.example.org",
 		AccessKey: "GK…",
 		SecretKey: "…",
-		Bucket:    "iaempe",
+		Bucket:    "my-bucket",
 	})
 	if err != nil {
 		log.Fatal(err)
@@ -56,6 +56,6 @@ func ExampleClient_Read() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	_, err = s3.Read(context.Background(), "s3://iaempe/does-not-exist.json")
+	_, err = s3.Read(context.Background(), "s3://my-bucket/does-not-exist.json")
 	fmt.Println(errors.Is(err, s3pe.ErrNotFound))
 }

@@ -47,12 +47,12 @@ when the ETag is an MD5, against the MD5 of what arrived.
 }
 \examples{
 \dontshow{if (interactive()) withAutoprint(\{ # examplesIf}
-meta <- read_s3("dados/metadata.json", bucket = "iaempe")
+meta <- read_s3("data/manifest.json", bucket = "my-bucket")
 meta$ultimo_mes
 
-icms <- read_s3("s3://horizonte-fiscal/series/estado/icms.csv.gz")
+sales <- read_s3("s3://my-bucket/series/sales.csv.gz")
 
 # the bytes, whatever the extension
-png <- read_s3("nota_tecnica/figura1.png", bucket = "iaempe", format = "raw")
+png <- read_s3("report/figure1.png", bucket = "my-bucket", format = "raw")
 \dontshow{\}) # examplesIf}
 }

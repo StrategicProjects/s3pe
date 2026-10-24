@@ -16,9 +16,11 @@ s3_config(
 )
 }
 \arguments{
-\item{endpoint}{\verb{scheme://host[:port]}, no path.}
+\item{endpoint}{\verb{scheme://host[:port]}, no path. Missing endpoint is an
+error when a request is made, not here.}
 
-\item{region}{Signing region. The Garage of Pernambuco uses \code{us-east-1}.}
+\item{region}{Signing region; \code{us-east-1} is what most self-hosted
+stores (MinIO, Garage, Ceph) expect.}
 
 \item{access_key, secret_key}{Credentials. Missing credentials are an
 error when a request is made, not here.}
@@ -43,7 +45,7 @@ then from the default:
 \details{
 \tabular{llll}{
    Setting \tab Option \tab Environment \tab Default \cr
-   \code{endpoint} \tab \code{s3pe.endpoint} \tab \code{S3PE_ENDPOINT}, \code{AWS_ENDPOINT_URL} \tab \verb{https://s3.pe.gov.br} \cr
+   \code{endpoint} \tab \code{s3pe.endpoint} \tab \code{S3PE_ENDPOINT}, \code{AWS_ENDPOINT_URL} \tab required \cr
    \code{region} \tab \code{s3pe.region} \tab \code{AWS_REGION}, \code{AWS_DEFAULT_REGION} \tab \code{us-east-1} \cr
    \code{access_key} \tab  \tab \code{AWS_ACCESS_KEY_ID} \tab required \cr
    \code{secret_key} \tab  \tab \code{AWS_SECRET_ACCESS_KEY} \tab required \cr
@@ -55,13 +57,15 @@ then from the default:
 
 
 Keep credentials in \verb{~/.Renviron} (R reads it at start-up), never in
-scripts. URLs are always path-style (\code{endpoint/bucket/key}), which is
-what the Garage server of Pernambuco expects.
+scripts. The endpoint has no default: set it once per machine
+(\code{S3PE_ENDPOINT}) or per session (\code{\link[=use_endpoint]{use_endpoint()}}). URLs are always
+path-style (\code{endpoint/bucket/key}), which every S3-compatible store
+accepts.
 }
 \examples{
 \dontshow{if (interactive()) withAutoprint(\{ # examplesIf}
 s3_config()
-cfg <- s3_config(bucket = "iaempe")
-list_s3("dados/", config = cfg)
+cfg <- s3_config(endpoint = "https://s3.example.org", bucket = "my-bucket")
+list_s3("data/", config = cfg)
 \dontshow{\}) # examplesIf}
 }

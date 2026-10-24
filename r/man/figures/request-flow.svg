@@ -77,8 +77,8 @@
   <text class="t" x="26" y="254">Success</text>
   <text class="s" x="26" y="272">The object, the file or the listing, and one line on stderr:</text>
   <g class="mono">
-    <text x="26" y="296">↑ s3://iaempe/etl/painel.parquet (12.3 MB, 0.8 s)</text>
-    <text x="26" y="316">✔ 31 objects under s3://iaempe/dados/ (0.2 s)</text>
+    <text x="26" y="296">↑ s3://my-bucket/etl/sales.parquet (12.3 MB, 0.8 s)</text>
+    <text x="26" y="316">✔ 31 objects under s3://my-bucket/data/ (0.2 s)</text>
   </g>
 
   <rect class="err" x="490" y="230" width="460" height="105"/>

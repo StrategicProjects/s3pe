@@ -50,9 +50,9 @@ GH = "https://github.com/StrategicProjects/s3pe"
 EDITIONS = {
     "rust": dict(
         brand="#f0763b", logo="🦀", name="s3pe", lang="Rust", eyebrow="◆ Rust · S3 client + CLI",
-        title="s3pe — S3 client and command line in Rust for s3.pe.gov.br",
-        desc="A small, dependable S3 client in Rust: SigV4 signing over the real payload hash, retries, integrity checks, typed errors, and the s3pe command line. Made for s3.pe.gov.br, the Garage store of Pernambuco, usable with any S3-style store.",
-        h1='Objects in and out of <span class="grad">s3.pe.gov.br</span>, from Rust and the shell.',
+        title="s3pe — S3 client and command line in Rust",
+        desc="A small, dependable S3 client in Rust for any S3-compatible store: SigV4 signing over the real payload hash, retries, integrity checks, typed errors, and the s3pe command line.",
+        h1='Objects in and out of <span class="grad">any S3 store</span>, from Rust and the shell.',
         lead="The core of the s3pe family: nine verbs, a builder, typed errors, and the <code>s3pe</code> command for scripts and servers. ureq and rustls, no system OpenSSL.",
         badges=[("https://crates.io/crates/s3pe", "crates.io", "https://img.shields.io/crates/v/s3pe.svg"),
                 ("https://docs.rs/s3pe", "docs.rs", "https://img.shields.io/docsrs/s3pe"),
@@ -63,22 +63,22 @@ EDITIONS = {
         term_title="main.rs", term="""<span class="c-kw">use</span> s3pe::{<span class="c-cmd">read_s3</span>, <span class="c-cmd">upload_s3</span>, <span class="c-cmd">list_s3</span>};
 
 <span class="c-cmt">// credentials and endpoint from the environment</span>
-<span class="c-kw">let</span> meta = <span class="c-cmd">read_s3</span>(<span class="c-str">"s3://iaempe/dados/metadata.json"</span>)?;
-<span class="c-cmd">upload_s3</span>(<span class="c-str">"painel.parquet"</span>, <span class="c-str">"s3://iaempe/etl/"</span>, <span class="c-ty">None</span>)?;
-<span class="c-ok">↑ painel.parquet → s3://iaempe/etl/painel.parquet (12.3 MB, 0.8 s)</span>
+<span class="c-kw">let</span> meta = <span class="c-cmd">read_s3</span>(<span class="c-str">"s3://my-bucket/data/manifest.json"</span>)?;
+<span class="c-cmd">upload_s3</span>(<span class="c-str">"sales.parquet"</span>, <span class="c-str">"s3://my-bucket/etl/"</span>, <span class="c-ty">None</span>)?;
+<span class="c-ok">↑ sales.parquet → s3://my-bucket/etl/sales.parquet (12.3 MB, 0.8 s)</span>
 
-<span class="c-kw">for</span> o <span class="c-kw">in</span> <span class="c-cmd">list_s3</span>(<span class="c-str">"s3://iaempe/dados/"</span>)? {
+<span class="c-kw">for</span> o <span class="c-kw">in</span> <span class="c-cmd">list_s3</span>(<span class="c-str">"s3://my-bucket/data/"</span>)? {
     println!(<span class="c-str">"{:>10} {}"</span>, o.size, o.key);
 }""",
         features=[
-            ("🔏", "Signed the way Garage wants", "AWS Signature V4 over the real SHA-256 of the body. No unsigned payloads, no <code>aws-chunked</code> trailers, path-style URLs."),
+            ("🔏", "Signed the way every store accepts", "AWS Signature V4 over the real SHA-256 of the body. No unsigned payloads, no <code>aws-chunked</code> trailers (which some stores reject), path-style URLs."),
             ("🔁", "Retries that know when to stop", "Connection failures and HTTP 429/500/502/503/504: three tries, 1 s then 2 s, signed again with a fresh date. Never on other 4xx."),
             ("✅", "Every byte accounted for", "ETag against the local MD5 after a PUT; Content-Length and MD5 after a GET. Downloads land in a <code>.s3pe-part</code> file and are renamed when complete."),
             ("🧭", "Typed errors", "<code>Error::NotFound</code>, <code>AccessDenied</code>, <code>Http { status, code }</code>, <code>Transport</code>, <code>Config</code>, <code>Integrity</code>. Match on them, do not parse messages."),
             ("🦀", "Small and portable", "ureq with rustls and bundled roots: no OpenSSL to find, builds on Linux, macOS and Windows, Rust 1.85 or later. <code>#![forbid(unsafe_code)]</code>."),
             ("⌨️", "A command line too", "<code>cargo install s3pe</code> gives <code>s3pe ls | cat | get | put | rm | head | buckets</code>, with exit codes for scripts and credentials read only from the environment."),
         ],
-        verbs_note="Free functions over a client built from the environment, and the same verbs as methods of <code>Client</code>. Bytes in, bytes out: the crate does not pick formats, the Python and R editions do.",
+        verbs_note="Free functions over a client built from the environment (endpoint and credentials), and the same verbs as methods of <code>Client</code>. Bytes in, bytes out: the crate does not pick formats, the Python and R editions do.",
         verbs=[("read_s3", "GET into a <code>Vec&lt;u8&gt;</code>"), ("write_s3", "PUT bytes, content type guessed from the key"),
                ("download_s3", "GET to a file, streaming"), ("upload_s3", "PUT from a file, streaming, two passes"),
                ("list_s3", "every <code>Object</code> under a prefix, all pages"), ("exists_s3", "<code>bool</code>"),
@@ -87,14 +87,14 @@ EDITIONS = {
 <span class="c-prompt">$</span> <span class="c-cmd">cargo</span> add s3pe --no-default-features   <span class="c-cmt"># library only, no clap</span>
 <span class="c-prompt">$</span> <span class="c-cmd">cargo</span> install s3pe                <span class="c-cmt"># the s3pe command</span>""",
         panels=[("// an explicit client", """<span class="c-kw">let</span> s3 = s3pe::<span class="c-ty">Client</span>::<span class="c-cmd">builder</span>()
-    .<span class="c-cmd">endpoint</span>(<span class="c-str">"http://127.0.0.1:9003"</span>)
-    .<span class="c-cmd">credentials</span>(<span class="c-str">"GK…"</span>, <span class="c-str">"…"</span>)
-    .<span class="c-cmd">bucket</span>(<span class="c-str">"iaempe"</span>)
+    .<span class="c-cmd">endpoint</span>(<span class="c-str">"http://127.0.0.1:9000"</span>)
+    .<span class="c-cmd">credentials</span>(<span class="c-str">"AKIA…"</span>, <span class="c-str">"…"</span>)
+    .<span class="c-cmd">bucket</span>(<span class="c-str">"my-bucket"</span>)
     .<span class="c-cmd">build</span>()?;
 
-<span class="c-kw">let</span> bytes = s3.<span class="c-cmd">read</span>(<span class="c-str">"dados/metadata.json"</span>)?;
-s3.<span class="c-cmd">download</span>(<span class="c-str">"dados/pe.geojson"</span>, <span class="c-str">"pe.geojson"</span>)?;
-<span class="c-kw">if let</span> <span class="c-ty">Some</span>(m) = s3.<span class="c-cmd">head</span>(<span class="c-str">"etl/painel.parquet"</span>)? {
+<span class="c-kw">let</span> bytes = s3.<span class="c-cmd">read</span>(<span class="c-str">"data/manifest.json"</span>)?;
+s3.<span class="c-cmd">download</span>(<span class="c-str">"data/regions.geojson"</span>, <span class="c-str">"pe.geojson"</span>)?;
+<span class="c-kw">if let</span> <span class="c-ty">Some</span>(m) = s3.<span class="c-cmd">head</span>(<span class="c-str">"etl/sales.parquet"</span>)? {
     println!(<span class="c-str">"{} bytes"</span>, m.size);
 }
 <span class="c-kw">match</span> s3.<span class="c-cmd">read</span>(<span class="c-str">"missing"</span>) {
@@ -102,13 +102,13 @@ s3.<span class="c-cmd">download</span>(<span class="c-str">"dados/pe.geojson"</s
     other => { other?; }
 }"""),
                 ("# the command line", """<span class="c-prompt">$</span> <span class="c-cmd">s3pe</span> buckets
-<span class="c-prompt">$</span> <span class="c-cmd">s3pe</span> ls -l s3://iaempe/dados/
-<span class="c-prompt">$</span> <span class="c-cmd">s3pe</span> cat s3://iaempe/dados/metadata.json | jq .ultimo_mes
-<span class="c-prompt">$</span> <span class="c-cmd">s3pe</span> get s3://iaempe/dados/pe_municipios.geojson
-<span class="c-prompt">$</span> <span class="c-cmd">s3pe</span> put painel.parquet s3://iaempe/etl/
-<span class="c-ok">↑ painel.parquet → s3://iaempe/etl/painel.parquet (12.3 MB, 0.8 s)</span>
-<span class="c-prompt">$</span> <span class="c-cmd">s3pe</span> rm s3://iaempe/etl/old.parquet
-<span class="c-prompt">$</span> <span class="c-cmd">s3pe</span> --endpoint http://127.0.0.1:9003 -b iaempe ls dados/
+<span class="c-prompt">$</span> <span class="c-cmd">s3pe</span> ls -l s3://my-bucket/data/
+<span class="c-prompt">$</span> <span class="c-cmd">s3pe</span> cat s3://my-bucket/data/manifest.json | jq .ultimo_mes
+<span class="c-prompt">$</span> <span class="c-cmd">s3pe</span> get s3://my-bucket/data/pe_municipios.geojson
+<span class="c-prompt">$</span> <span class="c-cmd">s3pe</span> put sales.parquet s3://my-bucket/etl/
+<span class="c-ok">↑ sales.parquet → s3://my-bucket/etl/sales.parquet (12.3 MB, 0.8 s)</span>
+<span class="c-prompt">$</span> <span class="c-cmd">s3pe</span> rm s3://my-bucket/etl/old.parquet
+<span class="c-prompt">$</span> <span class="c-cmd">s3pe</span> --endpoint http://127.0.0.1:9000 -b my-bucket ls data/
 
 <span class="c-cmt"># exit codes: 0 ok · 2 not found · 3 access denied · 4 config</span>""")],
         install_note="Rust 1.85 or later. Changes between versions in the <a href=\"" + GH + "/blob/main/CHANGELOG.md\">changelog</a>.",
@@ -117,9 +117,9 @@ s3.<span class="c-cmd">download</span>(<span class="c-str">"dados/pe.geojson"</s
     ),
     "go": dict(
         brand="#00add8", logo="🐹", name="s3pe", lang="Go", eyebrow="◆ Go · S3 client",
-        title="s3pe — S3 client in Go for s3.pe.gov.br, standard library only",
-        desc="A small, dependable S3 client in Go: SigV4 signing over the real payload hash, retries, integrity checks, typed errors for errors.Is, context on every call, no dependencies. Made for s3.pe.gov.br, the Garage store of Pernambuco, usable with any S3-style store.",
-        h1='Objects in and out of <span class="grad">s3.pe.gov.br</span>, in Go.',
+        title="s3pe — S3 client in Go, standard library only",
+        desc="A small, dependable S3 client in Go for any S3-compatible store: SigV4 signing over the real payload hash, retries, integrity checks, typed errors for errors.Is, context on every call, no dependencies.",
+        h1='Objects in and out of <span class="grad">any S3 store</span>, in Go.',
         lead="Nine verbs over net/http and crypto/hmac, context on every call, errors you can <code>errors.Is</code>. No cgo, no <code>require</code> in go.mod.",
         badges=[("https://pkg.go.dev/github.com/StrategicProjects/s3pe", "Go Reference", "https://pkg.go.dev/badge/github.com/StrategicProjects/s3pe.svg"),
                 (GH + "/actions/workflows/ci.yml", "CI", GH + "/actions/workflows/ci.yml/badge.svg"),
@@ -131,16 +131,16 @@ s3.<span class="c-cmd">download</span>(<span class="c-str">"dados/pe.geojson"</s
 
 ctx := context.<span class="c-cmd">Background</span>()
 <span class="c-cmt">// credentials and endpoint from the environment</span>
-meta, err := s3pe.<span class="c-cmd">ReadS3</span>(ctx, <span class="c-str">"s3://iaempe/dados/metadata.json"</span>)
-_, err = s3pe.<span class="c-cmd">UploadS3</span>(ctx, <span class="c-str">"painel.parquet"</span>, <span class="c-str">"s3://iaempe/etl/"</span>, <span class="c-str">""</span>)
-<span class="c-ok">↑ painel.parquet → s3://iaempe/etl/painel.parquet (12.3 MB, 0.8 s)</span>
+meta, err := s3pe.<span class="c-cmd">ReadS3</span>(ctx, <span class="c-str">"s3://my-bucket/data/manifest.json"</span>)
+_, err = s3pe.<span class="c-cmd">UploadS3</span>(ctx, <span class="c-str">"sales.parquet"</span>, <span class="c-str">"s3://my-bucket/etl/"</span>, <span class="c-str">""</span>)
+<span class="c-ok">↑ sales.parquet → s3://my-bucket/etl/sales.parquet (12.3 MB, 0.8 s)</span>
 
-objects, err := s3pe.<span class="c-cmd">ListS3</span>(ctx, <span class="c-str">"s3://iaempe/dados/"</span>)
+objects, err := s3pe.<span class="c-cmd">ListS3</span>(ctx, <span class="c-str">"s3://my-bucket/data/"</span>)
 <span class="c-kw">for</span> _, o := <span class="c-kw">range</span> objects {
     fmt.<span class="c-cmd">Println</span>(o.Size, o.Key)
 }""",
         features=[
-            ("🔏", "Signed the way Garage wants", "AWS Signature V4 over the real SHA-256 of the body. No unsigned payloads, no <code>aws-chunked</code> trailers, path-style URLs."),
+            ("🔏", "Signed the way every store accepts", "AWS Signature V4 over the real SHA-256 of the body. No unsigned payloads, no <code>aws-chunked</code> trailers (which some stores reject), path-style URLs."),
             ("🔁", "Retries that know when to stop", "Connection failures and HTTP 429/500/502/503/504: three tries, 1 s then 2 s, signed again with a fresh date. Never on other 4xx."),
             ("✅", "Every byte accounted for", "ETag against the local MD5 after a PUT; Content-Length and MD5 after a GET. Downloads land in a <code>.s3pe-part</code> file and are renamed when complete."),
             ("🧭", "Errors for errors.Is", "<code>ErrNotFound</code>, <code>ErrAccessDenied</code>, <code>ErrHTTP</code>, <code>ErrTransport</code>, <code>ErrConfig</code>, <code>ErrIntegrity</code>, with the status, code and key in a <code>*s3pe.Error</code> for <code>errors.As</code>."),
@@ -154,13 +154,13 @@ objects, err := s3pe.<span class="c-cmd">ListS3</span>(ctx, <span class="c-str">
                ("HeadS3", "<code>*Object</code> or nil: size, type, date, ETag"), ("DeleteS3", "idempotent"), ("BucketsS3", "<code>[]Bucket</code>")],
         install_cmd="""<span class="c-prompt">$</span> <span class="c-cmd">go</span> get github.com/StrategicProjects/s3pe""",
         panels=[("// an explicit client", """s3, err := s3pe.<span class="c-cmd">New</span>(s3pe.<span class="c-ty">Config</span>{
-    Endpoint:  <span class="c-str">"http://127.0.0.1:9003"</span>,
+    Endpoint:  <span class="c-str">"http://127.0.0.1:9000"</span>,
     AccessKey: key, SecretKey: secret,
-    Bucket:    <span class="c-str">"iaempe"</span>,
+    Bucket:    <span class="c-str">"my-bucket"</span>,
 })
-data, err := s3.<span class="c-cmd">Read</span>(ctx, <span class="c-str">"dados/metadata.json"</span>)
-_, err = s3.<span class="c-cmd">Download</span>(ctx, <span class="c-str">"dados/pe.geojson"</span>, <span class="c-str">"pe.geojson"</span>)
-meta, err := s3.<span class="c-cmd">Head</span>(ctx, <span class="c-str">"etl/painel.parquet"</span>)
+data, err := s3.<span class="c-cmd">Read</span>(ctx, <span class="c-str">"data/manifest.json"</span>)
+_, err = s3.<span class="c-cmd">Download</span>(ctx, <span class="c-str">"data/regions.geojson"</span>, <span class="c-str">"pe.geojson"</span>)
+meta, err := s3.<span class="c-cmd">Head</span>(ctx, <span class="c-str">"etl/sales.parquet"</span>)
 <span class="c-kw">if</span> meta != <span class="c-kw">nil</span> {
     fmt.<span class="c-cmd">Println</span>(meta.Size, meta.LastModified)
 }"""),
@@ -182,9 +182,9 @@ s3, _ = s3pe.<span class="c-cmd">New</span>(s3pe.<span class="c-ty">Config</span
     ),
     "python": dict(
         brand="#3776ab", logo="🐍", name="s3pe", lang="Python", eyebrow="◆ Python · S3 client",
-        title="s3pe — read and write data on s3.pe.gov.br from Python",
-        desc="read_s3 and write_s3 for Python: DataFrames, dicts and files in and out of s3.pe.gov.br, the Garage store of Pernambuco, or any S3-style store. A Rust core signs, retries and checks every transfer; wheels for Linux, macOS and Windows.",
-        h1='Data in and out of <span class="grad">s3.pe.gov.br</span>, in Python.',
+        title="s3pe — read and write data on any S3 store from Python",
+        desc="read_s3 and write_s3 for Python: DataFrames, dicts and files in and out of any S3-compatible store. A Rust core signs, retries and checks every transfer; wheels for Linux, macOS and Windows.",
+        h1='Data in and out of <span class="grad">any S3 store</span>, in Python.',
         lead="Nine verbs that read and write DataFrames, dicts, text and files by extension, on a Rust core that signs, retries and verifies every transfer. <code>pip install s3pe</code>, two environment variables, done.",
         badges=[("https://pypi.org/project/s3pe/", "PyPI", "https://img.shields.io/pypi/v/s3pe.svg"),
                 (GH + "/actions/workflows/ci.yml", "CI", GH + "/actions/workflows/ci.yml/badge.svg"),
@@ -195,43 +195,43 @@ s3, _ = s3pe.<span class="c-cmd">New</span>(s3pe.<span class="c-ty">Config</span
         term_title="analysis.py", term="""<span class="c-kw">import</span> s3pe
 
 <span class="c-cmt"># credentials and endpoint from the environment</span>
-meta = s3pe.<span class="c-cmd">read_s3</span>(<span class="c-str">"s3://iaempe/dados/metadata.json"</span>)   <span class="c-cmt"># dict</span>
-<span class="c-ok">↓ s3://iaempe/dados/metadata.json (1.2 kB, 0.2 s)</span>
+meta = s3pe.<span class="c-cmd">read_s3</span>(<span class="c-str">"s3://my-bucket/data/manifest.json"</span>)   <span class="c-cmt"># dict</span>
+<span class="c-ok">↓ s3://my-bucket/data/manifest.json (1.2 kB, 0.2 s)</span>
 
-df = s3pe.<span class="c-cmd">read_s3</span>(<span class="c-str">"series/estado/icms.csv.gz"</span>,
-                  bucket=<span class="c-str">"horizonte-fiscal"</span>)        <span class="c-cmt"># DataFrame</span>
-s3pe.<span class="c-cmd">write_s3</span>(df, <span class="c-str">"s3://iaempe/nota/icms.parquet"</span>)
-<span class="c-ok">↑ s3://iaempe/nota/icms.parquet (84.1 kB, 0.3 s)</span>
+df = s3pe.<span class="c-cmd">read_s3</span>(<span class="c-str">"series/sales.csv.gz"</span>,
+                  bucket=<span class="c-str">"my-bucket"</span>)        <span class="c-cmt"># DataFrame</span>
+s3pe.<span class="c-cmd">write_s3</span>(df, <span class="c-str">"s3://my-bucket/reports/sales.parquet"</span>)
+<span class="c-ok">↑ s3://my-bucket/reports/sales.parquet (84.1 kB, 0.3 s)</span>
 
-<span class="c-kw">for</span> o <span class="c-kw">in</span> s3pe.<span class="c-cmd">list_s3</span>(<span class="c-str">"s3://iaempe/dados/"</span>):
+<span class="c-kw">for</span> o <span class="c-kw">in</span> s3pe.<span class="c-cmd">list_s3</span>(<span class="c-str">"s3://my-bucket/data/"</span>):
     print(o.size, o.key)""",
         features=[
             ("🗂️", "Formats by extension", "<code>.json</code> → dict, <code>.csv</code>/<code>.csv.gz</code>/<code>.tsv</code>/<code>.parquet</code>/<code>.xlsx</code> → DataFrame, text files → str, anything else → bytes. <code>format=</code> overrides; extra arguments go to pandas."),
             ("🦀", "A Rust core", "Signing, retries and checks happen in the s3pe crate; the GIL is released during transfers. Wheels for Linux (x86_64, aarch64), macOS and Windows, Python 3.9 or later."),
-            ("🔏", "Signed the way Garage wants", "AWS Signature V4 over the real SHA-256 of the body. No unsigned payloads, no <code>aws-chunked</code> trailers, path-style URLs."),
+            ("🔏", "Signed the way every store accepts", "AWS Signature V4 over the real SHA-256 of the body. No unsigned payloads, no <code>aws-chunked</code> trailers (which some stores reject), path-style URLs."),
             ("🔁", "Retries that know when to stop", "Connection failures and HTTP 429/500/502/503/504: three tries, 1 s then 2 s. Never on other 4xx."),
             ("✅", "Every byte accounted for", "ETag against the local MD5 after a PUT; Content-Length and MD5 after a GET. Downloads land in a <code>.s3pe-part</code> file and are renamed when complete."),
             ("🧭", "Typed exceptions", "<code>NotFoundError</code>, <code>AccessDeniedError</code>, <code>HttpError</code> (with <code>.status</code>, <code>.code</code>), <code>TransportError</code>, <code>ConfigError</code>, <code>IntegrityError</code>, all under <code>S3Error</code>."),
         ],
-        verbs_note="Module-level verbs over a default client (<code>s3pe.configure(bucket=\"iaempe\")</code> sets it), and the same verbs as methods of <code>s3pe.Client</code>.",
+        verbs_note="Module-level verbs over a default client (<code>s3pe.configure(bucket=\"my-bucket\")</code> sets it), and the same verbs as methods of <code>s3pe.Client</code>.",
         verbs=[("read_s3", "GET, decoded by extension or <code>format=</code>"), ("write_s3", "PUT a DataFrame, dict, list, str, bytes, file-like or Path"),
                ("download_s3", "GET to a file, streaming; refuses to overwrite unless asked"), ("upload_s3", "PUT from a file, streaming"),
                ("list_s3", "every <code>S3Object</code> under a prefix, all pages"), ("exists_s3", "<code>bool</code>"),
                ("head_s3", "<code>S3Object</code> or <code>None</code>: size, type, date, ETag"), ("delete_s3", "idempotent"), ("buckets_s3", "list of <code>Bucket</code>")],
         install_cmd="""<span class="c-prompt">$</span> <span class="c-cmd">pip</span> install s3pe              <span class="c-cmt"># bytes, str, dict/list and files</span>
 <span class="c-prompt">$</span> <span class="c-cmd">pip</span> install <span class="c-str">"s3pe[pandas]"</span>     <span class="c-cmt"># also CSV, Parquet and Excel as DataFrames</span>""",
-        panels=[("# an explicit client", """s3 = s3pe.<span class="c-ty">Client</span>(endpoint=<span class="c-str">"http://127.0.0.1:9003"</span>,
-                 bucket=<span class="c-str">"iaempe"</span>,
-                 access_key=<span class="c-str">"GK…"</span>, secret_key=<span class="c-str">"…"</span>)
-s3.<span class="c-cmd">read</span>(<span class="c-str">"dados/metadata.json"</span>)
-s3.<span class="c-cmd">write</span>(df, <span class="c-str">"nota/icms.csv"</span>, index=<span class="c-kw">False</span>)
-s3.<span class="c-cmd">download</span>(<span class="c-str">"dados/pe_municipios.geojson"</span>, <span class="c-str">"pe.geojson"</span>)
-s3.<span class="c-cmd">upload</span>(<span class="c-str">"figura1.png"</span>, <span class="c-str">"nota/"</span>)
-s3.<span class="c-cmd">head</span>(<span class="c-str">"etl/painel.parquet"</span>)      <span class="c-cmt"># S3Object or None</span>
+        panels=[("# an explicit client", """s3 = s3pe.<span class="c-ty">Client</span>(endpoint=<span class="c-str">"http://127.0.0.1:9000"</span>,
+                 bucket=<span class="c-str">"my-bucket"</span>,
+                 access_key=<span class="c-str">"AKIA…"</span>, secret_key=<span class="c-str">"…"</span>)
+s3.<span class="c-cmd">read</span>(<span class="c-str">"data/manifest.json"</span>)
+s3.<span class="c-cmd">write</span>(df, <span class="c-str">"reports/sales.csv"</span>, index=<span class="c-kw">False</span>)
+s3.<span class="c-cmd">download</span>(<span class="c-str">"data/regions.geojson"</span>, <span class="c-str">"pe.geojson"</span>)
+s3.<span class="c-cmd">upload</span>(<span class="c-str">"figure1.png"</span>, <span class="c-str">"reports/"</span>)
+s3.<span class="c-cmd">head</span>(<span class="c-str">"etl/sales.parquet"</span>)      <span class="c-cmt"># S3Object or None</span>
 
 s3pe.<span class="c-cmd">quiet</span>()                        <span class="c-cmt"># or S3PE_QUIET=1</span>"""),
                 ("# errors and formats", """<span class="c-kw">try</span>:
-    s3pe.<span class="c-cmd">read_s3</span>(<span class="c-str">"s3://iaempe/missing.json"</span>)
+    s3pe.<span class="c-cmd">read_s3</span>(<span class="c-str">"s3://my-bucket/missing.json"</span>)
 <span class="c-kw">except</span> s3pe.<span class="c-ty">NotFoundError</span>:
     ...
 <span class="c-kw">except</span> s3pe.<span class="c-ty">HttpError</span> <span class="c-kw">as</span> e:
@@ -336,7 +336,7 @@ def page(key, e):
 {verbs}
         </tbody>
       </table></div>
-      <p class="note">A key is <code>s3://bucket/key</code>, or a bare key when the bucket is configured (<code>S3PE_BUCKET</code> or the client). Credentials: <code>AWS_ACCESS_KEY_ID</code> and <code>AWS_SECRET_ACCESS_KEY</code>; endpoint <code>S3PE_ENDPOINT</code>, default <code>https://s3.pe.gov.br</code>.</p>
+      <p class="note">A key is <code>s3://bucket/key</code>, or a bare key when the bucket is configured (<code>S3PE_BUCKET</code> or the client). Endpoint: <code>S3PE_ENDPOINT</code> (<code>https://host[:port]</code>, required); credentials: <code>AWS_ACCESS_KEY_ID</code> and <code>AWS_SECRET_ACCESS_KEY</code>.</p>
     </div>
   </section>
 
@@ -371,7 +371,7 @@ def page(key, e):
     <div class="wrap">
       <h2>Architecture</h2>
       <p class="sub">{e["arch_text"]}</p>
-      <div class="diagram"><img src="../assets/architecture.svg" alt="Four editions (R on httr2 and openssl; Python as a PyO3 binding on the Rust crate; the Rust crate on ureq and rustls with the s3pe command line; Go on net/http) share one specification and talk to s3.pe.gov.br, a Garage server, or any S3 store." loading="lazy" /></div>
+      <div class="diagram"><img src="../assets/architecture.svg" alt="Four editions (R on httr2 and openssl; Python as a PyO3 binding on the Rust crate; the Rust crate on ureq and rustls with the s3pe command line; Go on net/http) share one specification and talk to any S3-compatible store." loading="lazy" /></div>
       <div class="grid f3" style="margin-top:18px">
 {family}
       </div>
@@ -381,7 +381,7 @@ def page(key, e):
 
 <footer>
   <div class="wrap foot-inner">
-    <div>s3pe · MIT · André Leite, Marcos Wasiliew, Hugo Vasconcelos, Carlos Amorim, Diogo Bezerra, Júlia Nascimento Barreto</div>
+    <div>s3pe · MIT · André Leite, Marcos Wasiliew, Hugo Vasconcelos, Carlos Amorim, Diogo Bezerra, Júlia Nascimento Barreto · Made in Pernambuco 🌵</div>
     <div class="foot-links">
       <a href="{GH}">GitHub</a>
       <a href="{GH}/blob/main/CHANGELOG.md">Changelog</a>

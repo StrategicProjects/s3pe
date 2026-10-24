@@ -274,7 +274,6 @@ fn _s3pe(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add("AccessDeniedError", m.py().get_type::<AccessDeniedError>())?;
     m.add("HttpError", m.py().get_type::<HttpError>())?;
     m.add("IntegrityError", m.py().get_type::<IntegrityError>())?;
-    m.add("DEFAULT_ENDPOINT", s3pe::DEFAULT_ENDPOINT)?;
     m.add("DEFAULT_REGION", s3pe::DEFAULT_REGION)?;
     m.add("CRATE_VERSION", env!("CARGO_PKG_VERSION"))?;
     Ok(())

@@ -1,4 +1,4 @@
-"""Against s3.pe.gov.br, only with S3PE_TEST_BUCKET set to a writable bucket."""
+"""Against a real store, only with S3PE_ENDPOINT set and S3PE_TEST_BUCKET naming a writable bucket."""
 
 import os
 
@@ -6,7 +6,7 @@ import pytest
 
 import s3pe
 
-pytestmark = pytest.mark.skipif(not os.environ.get("S3PE_TEST_BUCKET"), reason="S3PE_TEST_BUCKET not set")
+pytestmark = pytest.mark.skipif(not (os.environ.get("S3PE_TEST_BUCKET") and os.environ.get("S3PE_ENDPOINT")), reason="S3PE_TEST_BUCKET / S3PE_ENDPOINT not set")
 
 
 def test_live_round_trip(tmp_path):

@@ -1,3 +1,13 @@
+# s3pe 0.2.0
+
+* The endpoint has no default any more: set `S3PE_ENDPOINT`,
+  `options(s3pe.endpoint)` or call `use_endpoint()`. A missing endpoint is
+  an `s3pe_error_config` at request time, like missing credentials.
+* `use_bucket()` and `use_endpoint()` set the bucket and the endpoint for
+  the session.
+* Documentation and examples are generic: the package serves any
+  S3-compatible store.
+
 # s3pe 0.1.0
 
 * Initial release.

@@ -22,8 +22,6 @@ import (
 )
 
 const (
-	// DefaultEndpoint is used when none is given: Pernambuco's Garage server.
-	DefaultEndpoint = "https://s3.pe.gov.br"
 	// DefaultRegion is the signing region of that server.
 	DefaultRegion = "us-east-1"
 	// DefaultTimeout is the time one call may take before it is abandoned.
@@ -31,7 +29,7 @@ const (
 	// DefaultMaxTries is the number of attempts per call: the first and two retries.
 	DefaultMaxTries = 3
 
-	version   = "0.1.0"
+	version   = "0.2.0"
 	userAgent = "s3pe-go/" + version
 )
 
@@ -162,7 +160,7 @@ func (t Transfer) URL() string { return "s3://" + t.Bucket + "/" + t.Key }
 type Config struct {
 	// Endpoint is scheme://host[:port], no path.
 	Endpoint string
-	// Region is the signing region (us-east-1 for the Garage of Pernambuco).
+	// Region is the signing region (default us-east-1).
 	Region string
 	// AccessKey and SecretKey are required, here or in the environment.
 	AccessKey, SecretKey string
@@ -215,7 +213,7 @@ func New(cfg Config) (*Client, error) {
 		endpoint = env("S3PE_ENDPOINT", "AWS_ENDPOINT_URL")
 	}
 	if endpoint == "" {
-		endpoint = DefaultEndpoint
+		return nil, &Error{kind: ErrConfig, Message: "no endpoint: set S3PE_ENDPOINT (or AWS_ENDPOINT_URL) to https://host[:port] or Config.Endpoint"}
 	}
 	endpoint, host, err := parseEndpoint(endpoint)
 	if err != nil {

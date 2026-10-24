@@ -8,12 +8,11 @@
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.23606939.svg)](https://doi.org/10.5281/zenodo.23606939)
 
-Read and write data on **s3.pe.gov.br**, the S3 object store of the State of
-Pernambuco, Brazil (a [Garage](https://garagehq.deuxfleurs.fr) server), or on
-any S3-style store. The same nine verbs in R, Python, Rust and Go, with the
+Read and write data on any S3-compatible object store (AWS S3, Garage,
+MinIO, Ceph, …) with the same nine verbs in R, Python, Rust and Go: the
 same defaults, the same signing, the same retries and the same integrity
-checks. Credentials come from two environment variables; the format comes
-from the file extension; every transfer prints one line.
+checks. The endpoint and the credentials come from the environment; the
+format comes from the file extension; every transfer prints one line.
 
 **Website:** <https://strategicprojects.github.io/s3pe/> ·
 [Português](README.pt-BR.md)
@@ -28,37 +27,38 @@ from the file extension; every transfer prints one line.
 ## The nine verbs
 
 ```r
-library(s3pe)                                         # R
-meta <- read_s3("s3://iaempe/dados/metadata.json")    # list, from JSON
-icms <- read_s3("series/estado/icms.csv.gz", bucket = "horizonte-fiscal")  # tibble
-write_s3(icms, "s3://iaempe/nota/icms.parquet")
-list_s3("s3://iaempe/dados/")
+library(s3pe)                                           # R
+use_endpoint("https://s3.example.org"); use_bucket("my-bucket")
+meta  <- read_s3("data/manifest.json")                  # list, from JSON
+sales <- read_s3("series/sales.csv.gz")                 # tibble
+write_s3(sales, "reports/sales.parquet")
+list_s3("data/")
 ```
 
 ```python
-import s3pe                                           # Python
-meta = s3pe.read_s3("s3://iaempe/dados/metadata.json")          # dict
-icms = s3pe.read_s3("series/estado/icms.csv.gz", bucket="horizonte-fiscal")  # DataFrame
-s3pe.write_s3(icms, "s3://iaempe/nota/icms.parquet")
-s3pe.list_s3("s3://iaempe/dados/")
+import s3pe                                             # Python
+meta  = s3pe.read_s3("s3://my-bucket/data/manifest.json")          # dict
+sales = s3pe.read_s3("series/sales.csv.gz", bucket="my-bucket")    # DataFrame
+s3pe.write_s3(sales, "s3://my-bucket/reports/sales.parquet")
+s3pe.list_s3("s3://my-bucket/data/")
 ```
 
 ```rust
-let meta = s3pe::read_s3("s3://iaempe/dados/metadata.json")?;    // Rust: Vec<u8>
-s3pe::upload_s3("icms.parquet", "s3://iaempe/nota/icms.parquet", None)?;
-for o in s3pe::list_s3("s3://iaempe/dados/")? { println!("{} {}", o.size, o.key); }
+let meta = s3pe::read_s3("s3://my-bucket/data/manifest.json")?;    // Rust: Vec<u8>
+s3pe::upload_s3("sales.parquet", "s3://my-bucket/reports/sales.parquet", None)?;
+for o in s3pe::list_s3("s3://my-bucket/data/")? { println!("{} {}", o.size, o.key); }
 ```
 
 ```go
-meta, err := s3pe.ReadS3(ctx, "s3://iaempe/dados/metadata.json") // Go: []byte
-_, err = s3pe.UploadS3(ctx, "icms.parquet", "s3://iaempe/nota/icms.parquet", "")
-objects, err := s3pe.ListS3(ctx, "s3://iaempe/dados/")
+meta, err := s3pe.ReadS3(ctx, "s3://my-bucket/data/manifest.json")  // Go: []byte
+_, err = s3pe.UploadS3(ctx, "sales.parquet", "s3://my-bucket/reports/sales.parquet", "")
+objects, err := s3pe.ListS3(ctx, "s3://my-bucket/data/")
 ```
 
 ```bash
-s3pe ls s3://iaempe/dados/                                       # command line
-s3pe get s3://iaempe/dados/pe_municipios.geojson
-s3pe put painel.parquet s3://iaempe/etl/
+s3pe ls s3://my-bucket/data/                                         # command line
+s3pe get s3://my-bucket/data/regions.geojson
+s3pe put sales.parquet s3://my-bucket/reports/
 ```
 
 | Verb | Does |
@@ -74,7 +74,7 @@ Every edition also has a `Client` (R: `s3_config()`) for explicit settings.
 
 ## Architecture
 
-<img src="site/assets/architecture.svg" alt="Four editions (R on httr2 and openssl; Python as a PyO3 binding on the Rust crate; the Rust crate on ureq and rustls with the s3pe command line; Go on net/http) share one specification: resolve the key, sign with SigV4, retry, verify, log one line. All talk to s3.pe.gov.br, a Garage server with path-style URLs, or any S3 store." width="100%" />
+<img src="site/assets/architecture.svg" alt="Four editions (R on httr2 and openssl; Python as a PyO3 binding on the Rust crate; the Rust crate on ureq and rustls with the s3pe command line; Go on net/http) share one specification: resolve the key, sign with SigV4, retry, verify, log one line. All talk to any S3-compatible store through path-style URLs." width="100%" />
 
 ## Configuration
 
@@ -82,23 +82,25 @@ Argument, then environment, then default:
 
 | Setting | Environment | Default |
 |---|---|---|
-| endpoint | `S3PE_ENDPOINT`, then `AWS_ENDPOINT_URL` | `https://s3.pe.gov.br` |
-| region | `AWS_REGION`, then `AWS_DEFAULT_REGION` | `us-east-1` (the Garage's `s3_region`) |
+| endpoint | `S3PE_ENDPOINT`, then `AWS_ENDPOINT_URL` | required (`https://host[:port]`) |
+| region | `AWS_REGION`, then `AWS_DEFAULT_REGION` | `us-east-1` |
 | credentials | `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_SESSION_TOKEN` | required |
 | bucket | `S3PE_BUCKET` | none: write `s3://bucket/key` |
 | quiet | `S3PE_QUIET=1` | one log line per transfer |
 
-In R the usual place is `~/.Renviron`; in Python and the CLI any `.env`
-loader or the shell. Never put the key in a script or a repository. Inside
-the condepe server use `S3PE_ENDPOINT=http://127.0.0.1:9003`.
+In R the usual place is `~/.Renviron` (or `use_endpoint()` / `use_bucket()`
+for the session); in Python and the CLI any `.env` loader or the shell.
+Never put the key in a script or a repository.
 
 ## What happens in every call
 
 <img src="site/assets/request-flow.svg" alt="Six steps: resolve the key, hash the payload, sign with SigV4, send with Content-Length, retry on 429 and 5xx after 1 and 2 seconds, verify the ETag and Content-Length. Success prints one log line; errors are typed: not found, access denied, HTTP, transport, configuration, integrity." width="100%" />
 
+## Dependable by default
+
 - **Signing**: AWS Signature V4, header style, over the real SHA-256 of the
-  payload. No `aws-chunked` (Garage rejects it), no unsigned payloads. The
-  four signers reproduce the AWS documentation vector.
+  payload. No `aws-chunked` (which some stores reject), no unsigned
+  payloads. The four signers reproduce the AWS documentation vector.
 - **Retries**: connection failures and HTTP 429/500/502/503/504, 3 tries,
   1 s then 2 s. Never on other 4xx.
 - **Typed errors**: not found, access denied, other HTTP (with the S3 code),
@@ -107,7 +109,8 @@ the condepe server use `S3PE_ENDPOINT=http://127.0.0.1:9003`.
 - **Integrity**: ETag vs MD5 after uploads; `Content-Length` and MD5 after
   downloads.
 - **Tests**: each edition runs against a local fake S3 that verifies every
-  signature, and against the real server when `S3PE_TEST_BUCKET` is set.
+  signature, and against a real store when `S3PE_ENDPOINT` and
+  `S3PE_TEST_BUCKET` are set.
 
 Design decisions are recorded in [DESIGN.md](DESIGN.md); changes in
 [CHANGELOG.md](CHANGELOG.md).
@@ -117,10 +120,14 @@ Design decisions are recorded in [DESIGN.md](DESIGN.md); changes in
 ```
 r/        R package (CRAN)                  rust/    Rust crate and CLI (crates.io)
 python/   Python package, PyO3 on the crate  *.go     Go module (this directory)
-site/     landing page (GitHub Pages)        DESIGN.md decisions shared by the four
+site/     landing pages (GitHub Pages)       DESIGN.md decisions shared by the four
 ```
 
 ## Authors
 
 André Leite, Marcos Wasiliew, Hugo Vasconcelos, Carlos Amorim, Diogo Bezerra
 and Júlia Nascimento Barreto. MIT license. Cite with [CITATION.cff](CITATION.cff).
+
+## Made in Pernambuco 🌵
+
+s3pe is developed in Recife, Brazil.

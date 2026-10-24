@@ -23,6 +23,6 @@ without downloading the object.
 }
 \examples{
 \dontshow{if (interactive()) withAutoprint(\{ # examplesIf}
-head_s3("dados/metadata.json", bucket = "iaempe")
+head_s3("data/manifest.json", bucket = "my-bucket")
 \dontshow{\}) # examplesIf}
 }

@@ -60,8 +60,8 @@ what was sent.
 }
 \examples{
 \dontshow{if (interactive()) withAutoprint(\{ # examplesIf}
-write_s3(mtcars, "nota_tecnica/mtcars.csv", bucket = "iaempe")
-write_s3(list(gerado_em = Sys.time()), "nota_tecnica/manifest.json", bucket = "iaempe")
-write_s3(readBin("figura1.png", "raw", 1e7), "s3://iaempe/nota_tecnica/figura1.png")
+write_s3(mtcars, "report/mtcars.csv", bucket = "my-bucket")
+write_s3(list(generated_at = Sys.time()), "report/manifest.json", bucket = "my-bucket")
+write_s3(readBin("figure1.png", "raw", 1e7), "s3://my-bucket/report/figure1.png")
 \dontshow{\}) # examplesIf}
 }

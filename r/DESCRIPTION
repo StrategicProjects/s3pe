@@ -1,6 +1,6 @@
 Package: s3pe
-Title: Read and Write Data on the S3 Object Store of Pernambuco
-Version: 0.1.0
+Title: A Small, Dependable Client for S3 Object Stores
+Version: 0.2.0
 Authors@R: c(
     person("André", "Leite", email = "leite@castlab.org", role = c("aut", "cre"),
            comment = c(ORCID = "0000-0002-4718-9766")),
@@ -16,16 +16,16 @@ Authors@R: c(
            email = "juliabarreto@gd.seplag.pe.gov.br", role = "aut",
            comment = c(ORCID = "0009-0004-2851-7770"))
   )
-Description: A small, dependable client for the S3 object store of the
-    State of Pernambuco, Brazil ('s3.pe.gov.br', a 'Garage' server), and
-    for any other S3-style store. Read and write data frames and files
-    with read_s3() and write_s3(), chosen by file extension ('CSV',
-    'JSON', 'Parquet', 'RDS', 'GeoJSON'), list, inspect and delete objects.
-    Requests are signed with AWS Signature Version 4 over the real hash of
-    the payload, transient failures are retried with exponential backoff,
-    and every transfer is checked against the server's ETag and content
-    length. Credentials come from the environment and are never written
-    to disk.
+Description: Read and write data on any S3-compatible object store
+    ('AWS S3', 'MinIO', 'Garage', 'Ceph', ...). read_s3() and write_s3()
+    move data frames, lists and files, with the format chosen by the
+    key's extension ('CSV', 'JSON', 'Parquet', 'RDS', 'GeoJSON'); list,
+    inspect and delete objects with the same small vocabulary. Requests
+    are signed with AWS Signature Version 4 over the real hash of the
+    payload, transient failures are retried with exponential backoff, and
+    every transfer is checked against the server's ETag and content
+    length. Endpoint and credentials come from the environment and are
+    never written to disk.
 License: MIT + file LICENSE
 URL: https://github.com/StrategicProjects/s3pe,
     https://strategicprojects.github.io/s3pe/r/

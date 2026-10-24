@@ -13,22 +13,22 @@ use_endpoint(endpoint)
 \item{bucket}{Bucket name, or \code{NULL} to clear.}
 
 \item{endpoint}{\verb{scheme://host[:port]}, or \code{NULL} to go back to the
-environment's \code{S3PE_ENDPOINT} and the default \verb{https://s3.pe.gov.br}.}
+environment's \code{S3PE_ENDPOINT}.}
 }
 \value{
 The previous value, invisibly.
 }
 \description{
 Shortcuts for \code{options(s3pe.bucket = )} and \code{options(s3pe.endpoint = )}:
-after \code{use_bucket("iaempe")} every verb accepts bare keys
-(\code{read_s3("dados/metadata.json")}); after
-\code{use_endpoint("http://127.0.0.1:9003")} requests go to a local server,
-as inside the server that hosts the store. \code{NULL} clears the setting.
+after \code{use_bucket("my-bucket")} every verb accepts bare keys
+(\code{read_s3("data/manifest.json")}); after
+\code{use_endpoint("https://s3.example.org")} requests go to that store for
+the rest of the session. \code{NULL} clears the setting.
 }
 \examples{
 \dontshow{if (interactive()) withAutoprint(\{ # examplesIf}
-use_bucket("iaempe")
-read_s3("dados/metadata.json")
-use_endpoint("http://127.0.0.1:9003")
+use_endpoint("https://s3.example.org")
+use_bucket("my-bucket")
+read_s3("data/manifest.json")
 \dontshow{\}) # examplesIf}
 }

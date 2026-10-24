@@ -2,8 +2,8 @@
 #'
 #' Every object whose key starts with `prefix`, across all pages of the
 #' listing. Reading a bucket's manifest (`metadata.json`, `manifest.json`)
-#' is usually faster than listing it: the manifests of the Pernambuco
-#' buckets say what is there and are uploaded last.
+#' is usually faster than listing it, when the publisher writes one last:
+#' it says what is there, and it is there only when everything else is.
 #'
 #' @param prefix Key prefix, `""` or `NULL` for the whole bucket, or an
 #'   `s3://bucket/prefix` URL.
@@ -12,8 +12,8 @@
 #' @returns A tibble with one row per object: `key`, `size` (bytes),
 #'   `last_modified` (UTC) and `etag`. Zero rows when nothing matches.
 #' @examplesIf interactive()
-#' list_s3("dados/", bucket = "iaempe")
-#' list_s3("s3://horizonte-fiscal/series/estado/")
+#' list_s3("data/", bucket = "my-bucket")
+#' list_s3("s3://my-bucket/series/")
 #' @export
 list_s3 <- function(prefix = NULL, bucket = NULL, config = s3_config()) {
   prefix <- prefix %||% ""
@@ -49,7 +49,7 @@ list_s3 <- function(prefix = NULL, bucket = NULL, config = s3_config()) {
 #' @inheritParams read_s3
 #' @returns `TRUE`, invisibly.
 #' @examplesIf interactive()
-#' delete_s3("nota_tecnica/rascunho.csv", bucket = "iaempe")
+#' delete_s3("report/draft.csv", bucket = "my-bucket")
 #' @export
 delete_s3 <- function(key, bucket = NULL, config = s3_config()) {
   where <- resolve_key(key, bucket, config)
@@ -68,7 +68,7 @@ delete_s3 <- function(key, bucket = NULL, config = s3_config()) {
 #' @returns A one-row tibble (`key`, `size`, `content_type`,
 #'   `last_modified`, `etag`), or `NULL` when the object does not exist.
 #' @examplesIf interactive()
-#' head_s3("dados/metadata.json", bucket = "iaempe")
+#' head_s3("data/manifest.json", bucket = "my-bucket")
 #' @export
 head_s3 <- function(key, bucket = NULL, config = s3_config()) {
   where <- resolve_key(key, bucket, config)
@@ -95,7 +95,7 @@ head_s3 <- function(key, bucket = NULL, config = s3_config()) {
 #' @returns `TRUE` or `FALSE`. Anything but a plain "not found" (no
 #'   credentials, access denied, server down) is an error.
 #' @examplesIf interactive()
-#' exists_s3("dados/metadata.json", bucket = "iaempe")
+#' exists_s3("data/manifest.json", bucket = "my-bucket")
 #' @export
 exists_s3 <- function(key, bucket = NULL, config = s3_config()) {
   !is.null(head_s3(key, bucket = bucket, config = config))

@@ -21,12 +21,12 @@ A tibble with one row per object: \code{key}, \code{size} (bytes),
 \description{
 Every object whose key starts with \code{prefix}, across all pages of the
 listing. Reading a bucket's manifest (\code{metadata.json}, \code{manifest.json})
-is usually faster than listing it: the manifests of the Pernambuco
-buckets say what is there and are uploaded last.
+is usually faster than listing it, when the publisher writes one last:
+it says what is there, and it is there only when everything else is.
 }
 \examples{
 \dontshow{if (interactive()) withAutoprint(\{ # examplesIf}
-list_s3("dados/", bucket = "iaempe")
-list_s3("s3://horizonte-fiscal/series/estado/")
+list_s3("data/", bucket = "my-bucket")
+list_s3("s3://my-bucket/series/")
 \dontshow{\}) # examplesIf}
 }

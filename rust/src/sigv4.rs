@@ -3,7 +3,7 @@
 //! Signed headers are `host`, `x-amz-content-sha256`, `x-amz-date` and, when
 //! a session token is present, `x-amz-security-token`. The payload hash is
 //! always the real SHA-256 of the body: never `UNSIGNED-PAYLOAD`, never
-//! `aws-chunked` (Garage 2.4 rejects the chunked trailer).
+//! `aws-chunked` (some stores, Garage among them, reject the chunked trailer).
 
 use hmac::{Hmac, Mac};
 use sha2::{Digest, Sha256};
@@ -60,7 +60,7 @@ pub fn canonical_query(params: &[(String, String)]) -> String {
 /// Access key, secret key and optional session token.
 #[derive(Clone)]
 pub struct Credentials {
-    /// Access key id (`GK…` on Garage, `AKIA…` on AWS).
+    /// Access key id (`AKIA…` on AWS, `GK…` on Garage, …).
     pub access_key: String,
     /// Secret key. Never printed by `Debug`.
     pub secret_key: String,

@@ -51,13 +51,13 @@ check_format <- function(format, call = rlang::caller_env()) {
 #' @param config An [s3_config()].
 #' @returns The parsed object, as in the table.
 #' @examplesIf interactive()
-#' meta <- read_s3("dados/metadata.json", bucket = "iaempe")
+#' meta <- read_s3("data/manifest.json", bucket = "my-bucket")
 #' meta$ultimo_mes
 #'
-#' icms <- read_s3("s3://horizonte-fiscal/series/estado/icms.csv.gz")
+#' sales <- read_s3("s3://my-bucket/series/sales.csv.gz")
 #'
 #' # the bytes, whatever the extension
-#' png <- read_s3("nota_tecnica/figura1.png", bucket = "iaempe", format = "raw")
+#' png <- read_s3("report/figure1.png", bucket = "my-bucket", format = "raw")
 #' @export
 read_s3 <- function(key, bucket = NULL, ..., format = NULL, config = s3_config()) {
   where <- resolve_key(key, bucket, config)
@@ -154,9 +154,9 @@ file_extension <- function(key) {
 #' @returns Invisibly, a one-row tibble: `bucket`, `key`, `size` (bytes),
 #'   `etag`, `elapsed` (seconds).
 #' @examplesIf interactive()
-#' write_s3(mtcars, "nota_tecnica/mtcars.csv", bucket = "iaempe")
-#' write_s3(list(gerado_em = Sys.time()), "nota_tecnica/manifest.json", bucket = "iaempe")
-#' write_s3(readBin("figura1.png", "raw", 1e7), "s3://iaempe/nota_tecnica/figura1.png")
+#' write_s3(mtcars, "report/mtcars.csv", bucket = "my-bucket")
+#' write_s3(list(generated_at = Sys.time()), "report/manifest.json", bucket = "my-bucket")
+#' write_s3(readBin("figure1.png", "raw", 1e7), "s3://my-bucket/report/figure1.png")
 #' @export
 write_s3 <- function(x, key, bucket = NULL, ..., format = NULL,
                      content_type = NULL, config = s3_config()) {

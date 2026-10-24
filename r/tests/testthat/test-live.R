@@ -1,10 +1,11 @@
-# Against the real server, only when S3PE_TEST_BUCKET names a bucket the
-# credentials in the environment can write to. Everything goes under
-# s3pe-test/<pid>/ and is deleted at the end.
+# Against a real server, only when S3PE_TEST_BUCKET names a bucket the
+# credentials in the environment can write to and S3PE_ENDPOINT names the
+# store. Everything goes under s3pe-test/<pid>/ and is deleted at the end.
 
 test_that("live round trip", {
   bucket <- Sys.getenv("S3PE_TEST_BUCKET")
   skip_if(bucket == "", "S3PE_TEST_BUCKET not set")
+  skip_if(Sys.getenv("S3PE_ENDPOINT") == "", "S3PE_ENDPOINT not set")
   cfg <- s3_config(bucket = bucket, max_tries = 3)
   prefix <- sprintf("s3pe-test/%d/", Sys.getpid())
   withr::defer({

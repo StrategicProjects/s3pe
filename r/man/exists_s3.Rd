@@ -22,6 +22,6 @@ Does an object exist?
 }
 \examples{
 \dontshow{if (interactive()) withAutoprint(\{ # examplesIf}
-exists_s3("dados/metadata.json", bucket = "iaempe")
+exists_s3("data/manifest.json", bucket = "my-bucket")
 \dontshow{\}) # examplesIf}
 }

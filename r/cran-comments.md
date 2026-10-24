@@ -1,8 +1,8 @@
 ## Submission
 
-This is a new submission: a small client for the S3 object store of the
-State of Pernambuco, Brazil (`s3.pe.gov.br`, a Garage server), usable with
-any S3-style store.
+This is a new submission: a small client for S3-compatible object stores
+(AWS S3, MinIO, Garage, Ceph, ...), with the format of each object chosen
+by its file extension.
 
 ## R CMD check results
 
@@ -16,12 +16,12 @@ There are no reverse dependencies.
 
 ## Notes for reviewers
 
-* The store requires credentials for every request, so no example or
+* Every request needs an endpoint and credentials, so no example or
   vignette chunk can run on CRAN: examples are guarded with
   `@examplesIf interactive()` and the vignette is not evaluated.
 * The test suite runs fully offline against a fake server through
   `httr2::local_mocked_responses()`; the one live test is skipped unless
-  the environment variable `S3PE_TEST_BUCKET` is set.
+  the environment variables `S3PE_TEST_BUCKET` and `S3PE_ENDPOINT` are set.
 * Network failures raise classed errors (not warnings) by design: the
   package moves data a pipeline depends on, and a silent empty result
   would be worse than a stop. Nothing in the package reaches the

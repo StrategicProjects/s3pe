@@ -1,16 +1,16 @@
-//! A small, dependable S3 client, made for `s3.pe.gov.br` (the Garage
-//! object store of the State of Pernambuco, Brazil) and usable with any
-//! S3-style store.
+//! A small, dependable client for S3-compatible object stores (AWS S3,
+//! Garage, MinIO, Ceph, …): nine verbs, SigV4 signing, retries and integrity
+//! checks, plus the `s3pe` command line.
 //!
 //! Nine verbs, one client, nothing else to learn:
 //!
 //! ```no_run
 //! use s3pe::{read_s3, write_s3, list_s3};
 //!
-//! // credentials and endpoint come from the environment (see below)
-//! let manifest = read_s3("s3://iaempe/dados/metadata.json")?;
-//! write_s3("s3://iaempe/nota/figura1.png", std::fs::read("figura1.png")?, None)?;
-//! for object in list_s3("s3://iaempe/dados/")? {
+//! // endpoint and credentials come from the environment (see below)
+//! let manifest = read_s3("s3://my-bucket/data/manifest.json")?;
+//! write_s3("s3://my-bucket/reports/figure1.png", std::fs::read("figure1.png")?, None)?;
+//! for object in list_s3("s3://my-bucket/data/")? {
 //!     println!("{} {}", object.size, object.key);
 //! }
 //! # Ok::<(), Box<dyn std::error::Error>>(())
@@ -20,12 +20,12 @@
 //!
 //! ```no_run
 //! let s3 = s3pe::Client::builder()
-//!     .endpoint("https://s3.pe.gov.br")
-//!     .credentials("GK…", "…")
-//!     .bucket("iaempe")
+//!     .endpoint("https://s3.example.org")
+//!     .credentials("AKIA…", "…")
+//!     .bucket("my-bucket")
 //!     .build()?;
-//! let bytes = s3.read("dados/metadata.json")?;
-//! s3.upload("painel.parquet", "etl/painel.parquet", None)?;
+//! let bytes = s3.read("data/manifest.json")?;
+//! s3.upload("sales.parquet", "etl/sales.parquet", None)?;
 //! # Ok::<(), s3pe::Error>(())
 //! ```
 //!
@@ -39,7 +39,7 @@
 //!
 //! | Setting | Variables | Default |
 //! |---|---|---|
-//! | endpoint | `S3PE_ENDPOINT`, `AWS_ENDPOINT_URL` | `https://s3.pe.gov.br` |
+//! | endpoint | `S3PE_ENDPOINT`, `AWS_ENDPOINT_URL` | required |
 //! | region | `AWS_REGION`, `AWS_DEFAULT_REGION` | `us-east-1` |
 //! | credentials | `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_SESSION_TOKEN` | required |
 //! | bucket | `S3PE_BUCKET` | none: use `s3://bucket/key` |
@@ -49,7 +49,7 @@
 //! # What "dependable" means here
 //!
 //! - Requests are signed with AWS Signature V4 over the real SHA-256 of the
-//!   payload (no `aws-chunked`, which Garage rejects).
+//!   payload (no `aws-chunked`, which some stores, Garage among them, reject).
 //! - Connection failures and HTTP 429/500/502/503/504 are retried twice,
 //!   with a 1 s then 2 s pause. Other errors are reported at once, typed
 //!   ([`Error::NotFound`], [`Error::AccessDenied`], …).
@@ -66,11 +66,11 @@
 //! `cargo install s3pe` also installs the `s3pe` command:
 //!
 //! ```text
-//! s3pe ls s3://iaempe/dados/
-//! s3pe get s3://iaempe/dados/metadata.json
-//! s3pe put painel.parquet s3://iaempe/etl/
-//! s3pe cat s3://iaempe/dados/metadata.json | jq .ultimo_mes
-//! s3pe rm s3://iaempe/etl/old.parquet
+//! s3pe ls s3://my-bucket/data/
+//! s3pe get s3://my-bucket/data/manifest.json
+//! s3pe put sales.parquet s3://my-bucket/etl/
+//! s3pe cat s3://my-bucket/data/manifest.json | jq .version
+//! s3pe rm s3://my-bucket/etl/old.parquet
 //! ```
 //!
 //! The same package exists for Python (`pip install s3pe`), R
@@ -86,7 +86,7 @@ mod xml;
 
 pub use client::{
     content_type_for, format_size, Bucket, Client, ClientBuilder, Object, Transfer,
-    DEFAULT_ENDPOINT, DEFAULT_MAX_TRIES, DEFAULT_REGION, DEFAULT_TIMEOUT,
+    DEFAULT_MAX_TRIES, DEFAULT_REGION, DEFAULT_TIMEOUT,
 };
 pub use error::{Error, Result};
 

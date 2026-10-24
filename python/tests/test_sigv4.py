@@ -7,7 +7,7 @@ EMPTY = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
 
 
 def test_rust_signer_matches_python_signer():
-    args = ("GET", "127.0.0.1:9003", "/iaempe/dados/x%20y.json", [("list-type", "2"), ("prefix", "dados/")],
+    args = ("GET", "127.0.0.1:9003", "/data/raw/x%20y.json", [("list-type", "2"), ("prefix", "raw/")],
             EMPTY, "20261023T120000Z", "GK1", "s", "us-east-1")
     h = _s3pe.sign(*args)
     assert h["authorization"] == py_sign(*args)

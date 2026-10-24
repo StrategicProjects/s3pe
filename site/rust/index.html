@@ -3,10 +3,10 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>s3pe — S3 client and command line in Rust for s3.pe.gov.br</title>
-<meta name="description" content="A small, dependable S3 client in Rust: SigV4 signing over the real payload hash, retries, integrity checks, typed errors, and the s3pe command line. Made for s3.pe.gov.br, the Garage store of Pernambuco, usable with any S3-style store." />
-<meta property="og:title" content="s3pe — S3 client and command line in Rust for s3.pe.gov.br" />
-<meta property="og:description" content="A small, dependable S3 client in Rust: SigV4 signing over the real payload hash, retries, integrity checks, typed errors, and the s3pe command line. Made for s3.pe.gov.br, the Garage store of Pernambuco, usable with any S3-style store." />
+<title>s3pe — S3 client and command line in Rust</title>
+<meta name="description" content="A small, dependable S3 client in Rust for any S3-compatible store: SigV4 signing over the real payload hash, retries, integrity checks, typed errors, and the s3pe command line." />
+<meta property="og:title" content="s3pe — S3 client and command line in Rust" />
+<meta property="og:description" content="A small, dependable S3 client in Rust for any S3-compatible store: SigV4 signing over the real payload hash, retries, integrity checks, typed errors, and the s3pe command line." />
 <meta property="og:type" content="website" />
 <meta property="og:url" content="https://strategicprojects.github.io/s3pe/rust/" />
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%AA%A3%3C/text%3E%3C/svg%3E" />
@@ -72,7 +72,7 @@
     <div class="wrap hero-grid">
       <div>
         <span class="eyebrow">◆ Rust · S3 client + CLI</span>
-        <h1>Objects in and out of <span class="grad">s3.pe.gov.br</span>, from Rust and the shell.</h1>
+        <h1>Objects in and out of <span class="grad">any S3 store</span>, from Rust and the shell.</h1>
         <p class="lead">The core of the s3pe family: nine verbs, a builder, typed errors, and the <code>s3pe</code> command for scripts and servers. ureq and rustls, no system OpenSSL.</p>
         <div class="badges">
           <a href="https://crates.io/crates/s3pe"><img alt="crates.io" src="https://img.shields.io/crates/v/s3pe.svg"></a>
@@ -92,11 +92,11 @@
 <pre><code><span class="c-kw">use</span> s3pe::{<span class="c-cmd">read_s3</span>, <span class="c-cmd">upload_s3</span>, <span class="c-cmd">list_s3</span>};
 
 <span class="c-cmt">// credentials and endpoint from the environment</span>
-<span class="c-kw">let</span> meta = <span class="c-cmd">read_s3</span>(<span class="c-str">"s3://iaempe/dados/metadata.json"</span>)?;
-<span class="c-cmd">upload_s3</span>(<span class="c-str">"painel.parquet"</span>, <span class="c-str">"s3://iaempe/etl/"</span>, <span class="c-ty">None</span>)?;
-<span class="c-ok">↑ painel.parquet → s3://iaempe/etl/painel.parquet (12.3 MB, 0.8 s)</span>
+<span class="c-kw">let</span> meta = <span class="c-cmd">read_s3</span>(<span class="c-str">"s3://my-bucket/data/manifest.json"</span>)?;
+<span class="c-cmd">upload_s3</span>(<span class="c-str">"sales.parquet"</span>, <span class="c-str">"s3://my-bucket/etl/"</span>, <span class="c-ty">None</span>)?;
+<span class="c-ok">↑ sales.parquet → s3://my-bucket/etl/sales.parquet (12.3 MB, 0.8 s)</span>
 
-<span class="c-kw">for</span> o <span class="c-kw">in</span> <span class="c-cmd">list_s3</span>(<span class="c-str">"s3://iaempe/dados/"</span>)? {
+<span class="c-kw">for</span> o <span class="c-kw">in</span> <span class="c-cmd">list_s3</span>(<span class="c-str">"s3://my-bucket/data/"</span>)? {
     println!(<span class="c-str">"{:>10} {}"</span>, o.size, o.key);
 }</code></pre>
       </div>
@@ -108,7 +108,7 @@
       <h2>Built to be trusted with the data</h2>
       <p class="sub">A client that moves the files a pipeline depends on has one job: either the bytes arrived, or you hear about it. Everything here serves that.</p>
       <div class="grid f3">
-        <div class="card"><div class="ic">🔏</div><h3>Signed the way Garage wants</h3><p>AWS Signature V4 over the real SHA-256 of the body. No unsigned payloads, no <code>aws-chunked</code> trailers, path-style URLs.</p></div>
+        <div class="card"><div class="ic">🔏</div><h3>Signed the way every store accepts</h3><p>AWS Signature V4 over the real SHA-256 of the body. No unsigned payloads, no <code>aws-chunked</code> trailers (which some stores reject), path-style URLs.</p></div>
         <div class="card"><div class="ic">🔁</div><h3>Retries that know when to stop</h3><p>Connection failures and HTTP 429/500/502/503/504: three tries, 1 s then 2 s, signed again with a fresh date. Never on other 4xx.</p></div>
         <div class="card"><div class="ic">✅</div><h3>Every byte accounted for</h3><p>ETag against the local MD5 after a PUT; Content-Length and MD5 after a GET. Downloads land in a <code>.s3pe-part</code> file and are renamed when complete.</p></div>
         <div class="card"><div class="ic">🧭</div><h3>Typed errors</h3><p><code>Error::NotFound</code>, <code>AccessDenied</code>, <code>Http { status, code }</code>, <code>Transport</code>, <code>Config</code>, <code>Integrity</code>. Match on them, do not parse messages.</p></div>
@@ -121,7 +121,7 @@
   <section id="verbs">
     <div class="wrap">
       <h2>The nine verbs</h2>
-      <p class="sub">Free functions over a client built from the environment, and the same verbs as methods of <code>Client</code>. Bytes in, bytes out: the crate does not pick formats, the Python and R editions do.</p>
+      <p class="sub">Free functions over a client built from the environment (endpoint and credentials), and the same verbs as methods of <code>Client</code>. Bytes in, bytes out: the crate does not pick formats, the Python and R editions do.</p>
       <div class="scroll"><table class="cmp">
         <thead><tr><th>Verb</th><th>Does</th></tr></thead>
         <tbody>
@@ -136,7 +136,7 @@
           <tr><td><code>buckets_s3</code></td><td><code>Vec&lt;Bucket&gt;</code></td></tr>
         </tbody>
       </table></div>
-      <p class="note">A key is <code>s3://bucket/key</code>, or a bare key when the bucket is configured (<code>S3PE_BUCKET</code> or the client). Credentials: <code>AWS_ACCESS_KEY_ID</code> and <code>AWS_SECRET_ACCESS_KEY</code>; endpoint <code>S3PE_ENDPOINT</code>, default <code>https://s3.pe.gov.br</code>.</p>
+      <p class="note">A key is <code>s3://bucket/key</code>, or a bare key when the bucket is configured (<code>S3PE_BUCKET</code> or the client). Endpoint: <code>S3PE_ENDPOINT</code> (<code>https://host[:port]</code>, required); credentials: <code>AWS_ACCESS_KEY_ID</code> and <code>AWS_SECRET_ACCESS_KEY</code>.</p>
     </div>
   </section>
 
@@ -167,14 +167,14 @@
         <div><div class="panel">
 <pre><code><span class="c-cmt">// an explicit client</span>
 <span class="c-kw">let</span> s3 = s3pe::<span class="c-ty">Client</span>::<span class="c-cmd">builder</span>()
-    .<span class="c-cmd">endpoint</span>(<span class="c-str">"http://127.0.0.1:9003"</span>)
-    .<span class="c-cmd">credentials</span>(<span class="c-str">"GK…"</span>, <span class="c-str">"…"</span>)
-    .<span class="c-cmd">bucket</span>(<span class="c-str">"iaempe"</span>)
+    .<span class="c-cmd">endpoint</span>(<span class="c-str">"http://127.0.0.1:9000"</span>)
+    .<span class="c-cmd">credentials</span>(<span class="c-str">"AKIA…"</span>, <span class="c-str">"…"</span>)
+    .<span class="c-cmd">bucket</span>(<span class="c-str">"my-bucket"</span>)
     .<span class="c-cmd">build</span>()?;
 
-<span class="c-kw">let</span> bytes = s3.<span class="c-cmd">read</span>(<span class="c-str">"dados/metadata.json"</span>)?;
-s3.<span class="c-cmd">download</span>(<span class="c-str">"dados/pe.geojson"</span>, <span class="c-str">"pe.geojson"</span>)?;
-<span class="c-kw">if let</span> <span class="c-ty">Some</span>(m) = s3.<span class="c-cmd">head</span>(<span class="c-str">"etl/painel.parquet"</span>)? {
+<span class="c-kw">let</span> bytes = s3.<span class="c-cmd">read</span>(<span class="c-str">"data/manifest.json"</span>)?;
+s3.<span class="c-cmd">download</span>(<span class="c-str">"data/regions.geojson"</span>, <span class="c-str">"pe.geojson"</span>)?;
+<span class="c-kw">if let</span> <span class="c-ty">Some</span>(m) = s3.<span class="c-cmd">head</span>(<span class="c-str">"etl/sales.parquet"</span>)? {
     println!(<span class="c-str">"{} bytes"</span>, m.size);
 }
 <span class="c-kw">match</span> s3.<span class="c-cmd">read</span>(<span class="c-str">"missing"</span>) {
@@ -185,13 +185,13 @@ s3.<span class="c-cmd">download</span>(<span class="c-str">"dados/pe.geojson"</s
         <div><div class="panel">
 <pre><code><span class="c-cmt"># the command line</span>
 <span class="c-prompt">$</span> <span class="c-cmd">s3pe</span> buckets
-<span class="c-prompt">$</span> <span class="c-cmd">s3pe</span> ls -l s3://iaempe/dados/
-<span class="c-prompt">$</span> <span class="c-cmd">s3pe</span> cat s3://iaempe/dados/metadata.json | jq .ultimo_mes
-<span class="c-prompt">$</span> <span class="c-cmd">s3pe</span> get s3://iaempe/dados/pe_municipios.geojson
-<span class="c-prompt">$</span> <span class="c-cmd">s3pe</span> put painel.parquet s3://iaempe/etl/
-<span class="c-ok">↑ painel.parquet → s3://iaempe/etl/painel.parquet (12.3 MB, 0.8 s)</span>
-<span class="c-prompt">$</span> <span class="c-cmd">s3pe</span> rm s3://iaempe/etl/old.parquet
-<span class="c-prompt">$</span> <span class="c-cmd">s3pe</span> --endpoint http://127.0.0.1:9003 -b iaempe ls dados/
+<span class="c-prompt">$</span> <span class="c-cmd">s3pe</span> ls -l s3://my-bucket/data/
+<span class="c-prompt">$</span> <span class="c-cmd">s3pe</span> cat s3://my-bucket/data/manifest.json | jq .ultimo_mes
+<span class="c-prompt">$</span> <span class="c-cmd">s3pe</span> get s3://my-bucket/data/pe_municipios.geojson
+<span class="c-prompt">$</span> <span class="c-cmd">s3pe</span> put sales.parquet s3://my-bucket/etl/
+<span class="c-ok">↑ sales.parquet → s3://my-bucket/etl/sales.parquet (12.3 MB, 0.8 s)</span>
+<span class="c-prompt">$</span> <span class="c-cmd">s3pe</span> rm s3://my-bucket/etl/old.parquet
+<span class="c-prompt">$</span> <span class="c-cmd">s3pe</span> --endpoint http://127.0.0.1:9000 -b my-bucket ls data/
 
 <span class="c-cmt"># exit codes: 0 ok · 2 not found · 3 access denied · 4 config</span></code></pre>
         </div></div>
@@ -203,7 +203,7 @@ s3.<span class="c-cmd">download</span>(<span class="c-str">"dados/pe.geojson"</s
     <div class="wrap">
       <h2>Architecture</h2>
       <p class="sub">The crate is the core of the family: the Python package is a PyO3 binding on it, while R and Go reimplement the same specification in their own idiom. One repository, one version, one <a href="https://github.com/StrategicProjects/s3pe/blob/main/DESIGN.md">DESIGN.md</a>.</p>
-      <div class="diagram"><img src="../assets/architecture.svg" alt="Four editions (R on httr2 and openssl; Python as a PyO3 binding on the Rust crate; the Rust crate on ureq and rustls with the s3pe command line; Go on net/http) share one specification and talk to s3.pe.gov.br, a Garage server, or any S3 store." loading="lazy" /></div>
+      <div class="diagram"><img src="../assets/architecture.svg" alt="Four editions (R on httr2 and openssl; Python as a PyO3 binding on the Rust crate; the Rust crate on ureq and rustls with the s3pe command line; Go on net/http) share one specification and talk to any S3-compatible store." loading="lazy" /></div>
       <div class="grid f3" style="margin-top:18px">
         <div class="card"><h3>R</h3><pre><code>install.packages("s3pe")</code></pre><div class="note"><a href="../r/">R edition →</a></div></div>
         <div class="card"><h3>Python</h3><pre><code>pip install s3pe</code></pre><div class="note"><a href="../python/">Python edition →</a></div></div>
@@ -215,7 +215,7 @@ s3.<span class="c-cmd">download</span>(<span class="c-str">"dados/pe.geojson"</s
 
 <footer>
   <div class="wrap foot-inner">
-    <div>s3pe · MIT · André Leite, Marcos Wasiliew, Hugo Vasconcelos, Carlos Amorim, Diogo Bezerra, Júlia Nascimento Barreto</div>
+    <div>s3pe · MIT · André Leite, Marcos Wasiliew, Hugo Vasconcelos, Carlos Amorim, Diogo Bezerra, Júlia Nascimento Barreto · Made in Pernambuco 🌵</div>
     <div class="foot-links">
       <a href="https://github.com/StrategicProjects/s3pe">GitHub</a>
       <a href="https://github.com/StrategicProjects/s3pe/blob/main/CHANGELOG.md">Changelog</a>

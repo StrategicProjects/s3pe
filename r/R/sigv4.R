@@ -1,7 +1,7 @@
 # AWS Signature Version 4 for S3, header style. Signed headers: host,
 # x-amz-content-sha256, x-amz-date (and x-amz-security-token when there is
 # a session token). The payload hash is always the real SHA-256 of the
-# body: never UNSIGNED-PAYLOAD, never aws-chunked (Garage rejects it).
+# body: never UNSIGNED-PAYLOAD, never aws-chunked (some stores reject it).
 
 EMPTY_SHA256 <- "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
 

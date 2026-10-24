@@ -28,6 +28,6 @@ interrupted download leaves nothing at \code{path}.
 }
 \examples{
 \dontshow{if (interactive()) withAutoprint(\{ # examplesIf}
-download_s3("dados/pe_municipios.geojson", "pe_municipios.geojson", bucket = "iaempe")
+download_s3("data/regions.geojson", "regions.geojson", bucket = "my-bucket")
 \dontshow{\}) # examplesIf}
 }

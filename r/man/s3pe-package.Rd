@@ -4,11 +4,11 @@
 \name{s3pe-package}
 \alias{s3pe}
 \alias{s3pe-package}
-\title{s3pe: Read and Write Data on the S3 Object Store of Pernambuco}
+\title{s3pe: A Small, Dependable Client for S3 Object Stores}
 \description{
 \if{html}{\figure{logo.svg}{options: style='float: right' alt='logo' width='120'}}
 
-A small, dependable client for the S3 object store of the State of Pernambuco, Brazil ('s3.pe.gov.br', a 'Garage' server), and for any other S3-style store. Read and write data frames and files with read_s3() and write_s3(), chosen by file extension ('CSV', 'JSON', 'Parquet', 'RDS', 'GeoJSON'), list, inspect and delete objects. Requests are signed with AWS Signature Version 4 over the real hash of the payload, transient failures are retried with exponential backoff, and every transfer is checked against the server's ETag and content length. Credentials come from the environment and are never written to disk.
+Read and write data on any S3-compatible object store ('AWS S3', 'MinIO', 'Garage', 'Ceph', ...). read_s3() and write_s3() move data frames, lists and files, with the format chosen by the key's extension ('CSV', 'JSON', 'Parquet', 'RDS', 'GeoJSON'); list, inspect and delete objects with the same small vocabulary. Requests are signed with AWS Signature Version 4 over the real hash of the payload, transient failures are retried with exponential backoff, and every transfer is checked against the server's ETag and content length. Endpoint and credentials come from the environment and are never written to disk.
 }
 \seealso{
 Useful links:

@@ -1,6 +1,5 @@
 from typing import Optional
 
-DEFAULT_ENDPOINT: str
 DEFAULT_REGION: str
 CRATE_VERSION: str
 

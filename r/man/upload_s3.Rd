@@ -34,7 +34,7 @@ one to send it). The server's ETag is compared with the file's MD5.
 }
 \examples{
 \dontshow{if (interactive()) withAutoprint(\{ # examplesIf}
-upload_s3("output/painel.parquet", "etl/", bucket = "iaempe")
-upload_s3("figura1.png", "s3://iaempe/nota_tecnica/figura1.png")
+upload_s3("output/panel.parquet", "etl/", bucket = "my-bucket")
+upload_s3("figure1.png", "s3://my-bucket/report/figure1.png")
 \dontshow{\}) # examplesIf}
 }

@@ -6,7 +6,7 @@
 #'
 #' | Setting | Option | Environment | Default |
 #' |---|---|---|---|
-#' | `endpoint` | `s3pe.endpoint` | `S3PE_ENDPOINT`, `AWS_ENDPOINT_URL` | `https://s3.pe.gov.br` |
+#' | `endpoint` | `s3pe.endpoint` | `S3PE_ENDPOINT`, `AWS_ENDPOINT_URL` | required |
 #' | `region` | `s3pe.region` | `AWS_REGION`, `AWS_DEFAULT_REGION` | `us-east-1` |
 #' | `access_key` | | `AWS_ACCESS_KEY_ID` | required |
 #' | `secret_key` | | `AWS_SECRET_ACCESS_KEY` | required |
@@ -16,11 +16,15 @@
 #' | `max_tries` | `s3pe.max_tries` | | 3 |
 #'
 #' Keep credentials in `~/.Renviron` (R reads it at start-up), never in
-#' scripts. URLs are always path-style (`endpoint/bucket/key`), which is
-#' what the Garage server of Pernambuco expects.
+#' scripts. The endpoint has no default: set it once per machine
+#' (`S3PE_ENDPOINT`) or per session ([use_endpoint()]). URLs are always
+#' path-style (`endpoint/bucket/key`), which every S3-compatible store
+#' accepts.
 #'
-#' @param endpoint `scheme://host[:port]`, no path.
-#' @param region Signing region. The Garage of Pernambuco uses `us-east-1`.
+#' @param endpoint `scheme://host[:port]`, no path. Missing endpoint is an
+#'   error when a request is made, not here.
+#' @param region Signing region; `us-east-1` is what most self-hosted
+#'   stores (MinIO, Garage, Ceph) expect.
 #' @param access_key,secret_key Credentials. Missing credentials are an
 #'   error when a request is made, not here.
 #' @param session_token Session token of temporary credentials.
@@ -31,15 +35,14 @@
 #'   secret key.
 #' @examplesIf interactive()
 #' s3_config()
-#' cfg <- s3_config(bucket = "iaempe")
-#' list_s3("dados/", config = cfg)
+#' cfg <- s3_config(endpoint = "https://s3.example.org", bucket = "my-bucket")
+#' list_s3("data/", config = cfg)
 #' @export
 s3_config <- function(endpoint = NULL, region = NULL, access_key = NULL,
                       secret_key = NULL, session_token = NULL, bucket = NULL,
                       timeout = NULL, max_tries = NULL) {
   endpoint <- endpoint %||% getOption("s3pe.endpoint") %||%
-    env_or_null("S3PE_ENDPOINT") %||% env_or_null("AWS_ENDPOINT_URL") %||%
-    "https://s3.pe.gov.br"
+    env_or_null("S3PE_ENDPOINT") %||% env_or_null("AWS_ENDPOINT_URL")
   region <- region %||% getOption("s3pe.region") %||%
     env_or_null("AWS_REGION") %||% env_or_null("AWS_DEFAULT_REGION") %||%
     "us-east-1"
@@ -52,7 +55,7 @@ s3_config <- function(endpoint = NULL, region = NULL, access_key = NULL,
 
   rlang::check_number_decimal(timeout, min = 0)
   rlang::check_number_whole(max_tries, min = 1)
-  parsed <- parse_endpoint(endpoint)
+  parsed <- if (is.null(endpoint)) list(endpoint = NULL, host = NULL) else parse_endpoint(endpoint)
 
   structure(
     list(
@@ -106,7 +109,7 @@ print.s3pe_config <- function(x, ...) {
   cat(sprintf("  %-11s %s\n", c(
     "endpoint:", "region:", "bucket:", "access_key:", "secret_key:", "timeout:", "max_tries:"
   ), c(
-    x$endpoint, x$region, x$bucket %||% "<none>", key,
+    x$endpoint %||% "<unset>", x$region, x$bucket %||% "<none>", key,
     if (is.null(x$secret_key)) "<unset>" else "<set>",
     paste(x$timeout, "s"), as.character(x$max_tries)
   )), sep = "")
@@ -119,6 +122,14 @@ check_config <- function(config, call = rlang::caller_env()) {
   if (!inherits(config, "s3pe_config")) {
     cli::cli_abort(
       "{.arg config} must come from {.fn s3_config}.",
+      class = c("s3pe_error_config", "s3pe_error"), call = call
+    )
+  }
+  if (is.null(config$endpoint)) {
+    cli::cli_abort(
+      c("No endpoint.",
+        "i" = "Set {.envvar S3PE_ENDPOINT} (for example in {.file ~/.Renviron}),
+               call {.fn use_endpoint} or pass {.arg endpoint} to {.fn s3_config}."),
       class = c("s3pe_error_config", "s3pe_error"), call = call
     )
   }
@@ -182,19 +193,19 @@ resolve_key <- function(key, bucket, config, allow_empty = FALSE,
 #' Set the default bucket or endpoint for the session
 #'
 #' Shortcuts for `options(s3pe.bucket = )` and `options(s3pe.endpoint = )`:
-#' after `use_bucket("iaempe")` every verb accepts bare keys
-#' (`read_s3("dados/metadata.json")`); after
-#' `use_endpoint("http://127.0.0.1:9003")` requests go to a local server,
-#' as inside the server that hosts the store. `NULL` clears the setting.
+#' after `use_bucket("my-bucket")` every verb accepts bare keys
+#' (`read_s3("data/manifest.json")`); after
+#' `use_endpoint("https://s3.example.org")` requests go to that store for
+#' the rest of the session. `NULL` clears the setting.
 #'
 #' @param bucket Bucket name, or `NULL` to clear.
 #' @param endpoint `scheme://host[:port]`, or `NULL` to go back to the
-#'   environment's `S3PE_ENDPOINT` and the default `https://s3.pe.gov.br`.
+#'   environment's `S3PE_ENDPOINT`.
 #' @returns The previous value, invisibly.
 #' @examplesIf interactive()
-#' use_bucket("iaempe")
-#' read_s3("dados/metadata.json")
-#' use_endpoint("http://127.0.0.1:9003")
+#' use_endpoint("https://s3.example.org")
+#' use_bucket("my-bucket")
+#' read_s3("data/manifest.json")
 #' @export
 use_bucket <- function(bucket) {
   rlang::check_string(bucket, allow_null = TRUE)
@@ -217,7 +228,7 @@ use_endpoint <- function(endpoint) {
   old <- getOption("s3pe.endpoint")
   options(s3pe.endpoint = endpoint)
   if (is.null(endpoint)) {
-    s3_inform(c("i" = "Endpoint back to the default ({.url {s3_config()$endpoint}})."))
+    s3_inform(c("i" = "Endpoint cleared."))
   } else {
     s3_inform(c("v" = "Endpoint: {.url {endpoint}}"))
   }

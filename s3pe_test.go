@@ -441,8 +441,8 @@ func TestConfigErrors(t *testing.T) {
 	if b != "other" || k != "" {
 		t.Fatal(b, k)
 	}
-	cb, _ := New(Config{Endpoint: "https://x.org", AccessKey: "a", SecretKey: "b", Bucket: "iaempe"})
-	if b, k, _ := cb.Resolve("/dados/x.json"); b != "iaempe" || k != "dados/x.json" {
+	cb, _ := New(Config{Endpoint: "https://x.org", AccessKey: "a", SecretKey: "b", Bucket: "data"})
+	if b, k, _ := cb.Resolve("/raw/x.json"); b != "data" || k != "raw/x.json" {
 		t.Fatal(b, k)
 	}
 }
@@ -487,5 +487,14 @@ func TestErrorMessages(t *testing.T) {
 	e = &Error{kind: ErrHTTP, Status: 503, Code: "SlowDown", Message: "try later", Bucket: "b", Key: "k"}
 	if e.Error() != "HTTP 503 SlowDown: try later (s3://b/k)" {
 		t.Fatal(e.Error())
+	}
+}
+
+func TestEndpointIsRequired(t *testing.T) {
+	t.Setenv("S3PE_ENDPOINT", "")
+	t.Setenv("AWS_ENDPOINT_URL", "")
+	_, err := New(Config{AccessKey: "a", SecretKey: "b"})
+	if !errors.Is(err, ErrConfig) {
+		t.Fatalf("want ErrConfig without an endpoint, got %v", err)
 	}
 }

@@ -1,5 +1,5 @@
-//! Against the real server, only when `S3PE_TEST_BUCKET` names a bucket the
-//! credentials in the environment can write to. Everything goes under the
+//! Against a real store, only when `S3PE_TEST_BUCKET` names a bucket the
+//! credentials in the environment can write to (and `S3PE_ENDPOINT` is set). Everything goes under the
 //! prefix `s3pe-test/<pid>/` and is deleted at the end.
 
 use s3pe::Client;

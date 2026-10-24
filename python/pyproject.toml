@@ -4,7 +4,7 @@ build-backend = "maturin"
 
 [project]
 name = "s3pe"
-description = "Read, write, list and delete objects on s3.pe.gov.br (the Garage object store of Pernambuco) or any S3-style store: read_s3, write_s3 and friends, with SigV4 signing, retries and integrity checks in Rust."
+description = "Read, write, list and delete objects on any S3-compatible store: read_s3, write_s3 and friends, with SigV4 signing, retries and integrity checks in Rust."
 readme = "README.md"
 requires-python = ">=3.9"
 license = "MIT"
@@ -18,7 +18,7 @@ authors = [
   { name = "Júlia Nascimento Barreto", email = "juliabarreto@gd.seplag.pe.gov.br" },
 ]
 maintainers = [{ name = "André Leite", email = "leite@castlab.org" }]
-keywords = ["s3", "garage", "object storage", "pernambuco", "data"]
+keywords = ["s3", "object storage", "garage", "minio", "data"]
 classifiers = [
   "Development Status :: 4 - Beta",
   "Intended Audience :: Developers",

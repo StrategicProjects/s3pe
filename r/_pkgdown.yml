@@ -7,10 +7,10 @@ template:
     primary: "#1f5aa8"
 
 home:
-  title: s3pe — the S3 store of Pernambuco from R
+  title: s3pe — a small, dependable S3 client for R
   description: >
-    Read and write data on s3.pe.gov.br (or any S3-style store) with
-    signed, retried and verified requests.
+    Read and write data on any S3-compatible object store with signed,
+    retried and verified requests. The format follows the file extension.
 
 navbar:
   structure:

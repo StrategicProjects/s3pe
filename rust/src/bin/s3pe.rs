@@ -12,13 +12,14 @@ use std::time::Duration;
 #[command(
     name = "s3pe",
     version,
-    about = "Read, write, list and delete objects on s3.pe.gov.br or any S3-style store",
+    about = "Read, write, list and delete objects on any S3-compatible store",
     long_about = None,
-    after_help = "Credentials: AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY in the environment.\n\
-                  Keys are s3://bucket/key URLs, or bare keys when --bucket or S3PE_BUCKET is set."
+    after_help = "Endpoint: --endpoint or S3PE_ENDPOINT (https://host[:port]). Credentials: AWS_ACCESS_KEY_ID\n\
+                  and AWS_SECRET_ACCESS_KEY in the environment. Keys are s3://bucket/key URLs, or bare\n\
+                  keys when --bucket or S3PE_BUCKET is set."
 )]
 struct Cli {
-    /// Endpoint, scheme://host[:port] (default: $S3PE_ENDPOINT or https://s3.pe.gov.br)
+    /// Endpoint, scheme://host[:port] (default: $S3PE_ENDPOINT)
     #[arg(long, global = true, value_name = "URL")]
     endpoint: Option<String>,
     /// Signing region (default: $AWS_REGION or us-east-1)

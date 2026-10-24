@@ -77,6 +77,14 @@ def test_retries_and_errors(fake):
         s3pe.Client(endpoint="not-a-url", access_key="a", secret_key="b")
     with pytest.raises(s3pe.ConfigError):
         s3pe.Client(access_key="a")
+    monkeypatch = None  # endpoint is required: without S3PE_ENDPOINT the client cannot be built
+    import os
+    saved = os.environ.pop("S3PE_ENDPOINT")
+    try:
+        with pytest.raises(s3pe.ConfigError):
+            s3pe.Client(access_key="a", secret_key="b")
+    finally:
+        os.environ["S3PE_ENDPOINT"] = saved
     assert isinstance(s3pe.NotFoundError(), s3pe.S3Error)
 
 

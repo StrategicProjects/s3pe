@@ -1,6 +1,6 @@
 [package]
 name = "s3pe"
-version = "0.1.0"
+version = "0.2.0"
 authors = [
     "André Leite <leite@castlab.org>",
     "Marcos Wasiliew <marcos.wasiliew@gmail.com>",
@@ -11,13 +11,13 @@ authors = [
 ]
 edition = "2021"
 rust-version = "1.85"
-description = "Small, dependable S3 client and CLI: read, write, list and delete objects on s3.pe.gov.br (Garage) or any S3-style store, with SigV4 signing, retries and integrity checks"
+description = "Small, dependable S3 client and CLI for any S3-compatible store: read, write, list and delete objects with SigV4 signing, retries and integrity checks"
 license = "MIT"
 repository = "https://github.com/StrategicProjects/s3pe"
 homepage = "https://strategicprojects.github.io/s3pe/rust/"
 documentation = "https://docs.rs/s3pe"
 readme = "README.md"
-keywords = ["s3", "garage", "object-storage", "cli", "pernambuco"]
+keywords = ["s3", "object-storage", "cli", "garage", "minio"]
 categories = ["api-bindings", "command-line-utilities", "web-programming::http-client"]
 exclude = ["tests/live.rs"]
 

@@ -6,10 +6,11 @@ belongs in all four.
 
 ## D1. Name and scope
 
-`s3pe`: the S3 endpoint of the State of Pernambuco (`s3.pe.gov.br`, a
-Garage server). The package is a thin, dependable client for *any* S3-style
-object store, with Pernambuco's endpoint as the default. Free on CRAN, PyPI,
-crates.io and GitHub on 2026-10-23.
+`s3pe`: a thin, dependable client for any S3-compatible object store
+(AWS S3, Garage, MinIO, Ceph, …). It was born for the Garage server of the
+State of Pernambuco, Brazil, hence the name; since 0.2.0 (D14) nothing in
+the code or the documentation is specific to that store. Free on CRAN,
+PyPI, crates.io and GitHub on 2026-10-23.
 
 ## D2. One repository, four editions, one version
 
@@ -33,15 +34,15 @@ test vector (D8).
 
 | Setting | Environment | Default |
 |---|---|---|
-| endpoint | `S3PE_ENDPOINT`, then `AWS_ENDPOINT_URL` | `https://s3.pe.gov.br` |
-| region | `AWS_REGION`, then `AWS_DEFAULT_REGION` | `us-east-1` (the Garage's `s3_region`) |
+| endpoint | `S3PE_ENDPOINT`, then `AWS_ENDPOINT_URL` | required (D14) |
+| region | `AWS_REGION`, then `AWS_DEFAULT_REGION` | `us-east-1` |
 | access key | `AWS_ACCESS_KEY_ID` | required |
 | secret key | `AWS_SECRET_ACCESS_KEY` | required |
 | session token | `AWS_SESSION_TOKEN` | none |
 | bucket | `S3PE_BUCKET` | none (required unless the key is an `s3://` URL) |
 
-Path-style URLs always (`https://host/bucket/key`); Garage has no
-`root_domain`, and path-style works on every store. A key may be written as
+Path-style URLs always (`https://host/bucket/key`): virtual-host style
+needs DNS the store may not have, and path-style works on every store. A key may be written as
 `s3://bucket/key`, which sets the bucket for that call.
 
 ## D5. Verbs: `<verb>_s3`
@@ -59,8 +60,8 @@ httr2's `req_auth_aws_v4()` only signs empty, JSON and form bodies, so the
 R edition signs by itself (openssl); the others do the same in ~60 lines.
 Signed headers are `host`, `x-amz-content-sha256`, `x-amz-date` (and
 `x-amz-security-token` when present). The payload hash is the real SHA-256
-of the body, never `UNSIGNED-PAYLOAD` and never `aws-chunked` (Garage 2.4
-rejects the chunked trailer the AWS SDKs send by default).
+of the body, never `UNSIGNED-PAYLOAD` and never `aws-chunked` (some stores, Garage
+2.4 among them, reject the chunked trailer the AWS SDKs send by default).
 
 ## D7. Robustness
 
@@ -82,7 +83,8 @@ The AWS documentation example (GET `examplebucket/test.txt`, key
 `AKIAIOSFODNN7EXAMPLE`, 2013-05-24, `Range: bytes=0-9`) must give the
 signature `f0e8bdb87c964420e857bd35b5d6ed310bd44f0170aba48dd91039c6036bdb41`
 in every edition. Each edition also runs against a local fake S3 server in
-its tests and, when `S3PE_TEST_BUCKET` is set, against the real one.
+its tests and, when `S3PE_ENDPOINT` and `S3PE_TEST_BUCKET` are set, against
+a real one.
 
 ## D9. Logging: one line per transfer, on stderr, silenceable
 
@@ -110,18 +112,18 @@ Content types on upload come from the same table.
 
 ## D11. No multipart upload in 0.1
 
-A single `PUT` carries up to 5 GB, enough for every file the platform
-publishes today. Multipart is a planned addition, not a 0.1 promise.
+A single `PUT` carries up to 5 GB, enough for the files this client was
+made to move. Multipart is a planned addition, not a 0.1 promise.
 
 ## D12. Session helpers for the bucket and the endpoint
 
-Typing `s3://iaempe/...` on every call is the explicit form, not the
+Typing `s3://my-bucket/...` on every call is the explicit form, not the
 required one. Each edition has a cheaper way to name the bucket once:
 `bucket=` on every verb, `S3PE_BUCKET` in the environment, and a session
-setter: R `use_bucket("iaempe")` / `use_endpoint("http://127.0.0.1:9003")`
+setter: R `use_bucket("my-bucket")` / `use_endpoint("https://s3.example.org")`
 (they set `options(s3pe.bucket)` and `options(s3pe.endpoint)`), Python
-`s3pe.configure(bucket = "iaempe")`, Rust `Client::builder().bucket()`, Go
-`Config{Bucket: "iaempe"}`, CLI `-b iaempe`.
+`s3pe.configure(bucket = "my-bucket")`, Rust `Client::builder().bucket()`, Go
+`Config{Bucket: "my-bucket"}`, CLI `-b my-bucket`.
 
 ## D13. Hashing files in R needs `file(path, raw = TRUE)`
 
@@ -129,3 +131,14 @@ R's `file()` transparently gunzips a `.gz` file, so the SHA-256 computed
 over the connection would not match the bytes sent and the server would
 answer `XAmzContentSHA256Mismatch`. The R edition opens files with
 `raw = TRUE` before hashing and before sending.
+
+## D14. Generic by default: no endpoint is assumed (0.2.0)
+
+Until 0.1.0 the endpoint defaulted to the store the package was written
+for. A generic client should not carry one organisation's server in its
+defaults, so from 0.2.0 the endpoint is required: `S3PE_ENDPOINT`,
+`AWS_ENDPOINT_URL`, the client argument, or in R `use_endpoint()`. The
+documentation and the examples use neutral names (`s3://my-bucket/…`,
+`https://s3.example.org`). The only trace of origin is a footer, "Made in
+Pernambuco 🌵". Worked examples for a specific store belong in that store's
+own documentation, not in the package.

@@ -3,10 +3,10 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>s3pe — read and write data on s3.pe.gov.br from Python</title>
-<meta name="description" content="read_s3 and write_s3 for Python: DataFrames, dicts and files in and out of s3.pe.gov.br, the Garage store of Pernambuco, or any S3-style store. A Rust core signs, retries and checks every transfer; wheels for Linux, macOS and Windows." />
-<meta property="og:title" content="s3pe — read and write data on s3.pe.gov.br from Python" />
-<meta property="og:description" content="read_s3 and write_s3 for Python: DataFrames, dicts and files in and out of s3.pe.gov.br, the Garage store of Pernambuco, or any S3-style store. A Rust core signs, retries and checks every transfer; wheels for Linux, macOS and Windows." />
+<title>s3pe — read and write data on any S3 store from Python</title>
+<meta name="description" content="read_s3 and write_s3 for Python: DataFrames, dicts and files in and out of any S3-compatible store. A Rust core signs, retries and checks every transfer; wheels for Linux, macOS and Windows." />
+<meta property="og:title" content="s3pe — read and write data on any S3 store from Python" />
+<meta property="og:description" content="read_s3 and write_s3 for Python: DataFrames, dicts and files in and out of any S3-compatible store. A Rust core signs, retries and checks every transfer; wheels for Linux, macOS and Windows." />
 <meta property="og:type" content="website" />
 <meta property="og:url" content="https://strategicprojects.github.io/s3pe/python/" />
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%AA%A3%3C/text%3E%3C/svg%3E" />
@@ -72,7 +72,7 @@
     <div class="wrap hero-grid">
       <div>
         <span class="eyebrow">◆ Python · S3 client</span>
-        <h1>Data in and out of <span class="grad">s3.pe.gov.br</span>, in Python.</h1>
+        <h1>Data in and out of <span class="grad">any S3 store</span>, in Python.</h1>
         <p class="lead">Nine verbs that read and write DataFrames, dicts, text and files by extension, on a Rust core that signs, retries and verifies every transfer. <code>pip install s3pe</code>, two environment variables, done.</p>
         <div class="badges">
           <a href="https://pypi.org/project/s3pe/"><img alt="PyPI" src="https://img.shields.io/pypi/v/s3pe.svg"></a>
@@ -92,15 +92,15 @@
 <pre><code><span class="c-kw">import</span> s3pe
 
 <span class="c-cmt"># credentials and endpoint from the environment</span>
-meta = s3pe.<span class="c-cmd">read_s3</span>(<span class="c-str">"s3://iaempe/dados/metadata.json"</span>)   <span class="c-cmt"># dict</span>
-<span class="c-ok">↓ s3://iaempe/dados/metadata.json (1.2 kB, 0.2 s)</span>
+meta = s3pe.<span class="c-cmd">read_s3</span>(<span class="c-str">"s3://my-bucket/data/manifest.json"</span>)   <span class="c-cmt"># dict</span>
+<span class="c-ok">↓ s3://my-bucket/data/manifest.json (1.2 kB, 0.2 s)</span>
 
-df = s3pe.<span class="c-cmd">read_s3</span>(<span class="c-str">"series/estado/icms.csv.gz"</span>,
-                  bucket=<span class="c-str">"horizonte-fiscal"</span>)        <span class="c-cmt"># DataFrame</span>
-s3pe.<span class="c-cmd">write_s3</span>(df, <span class="c-str">"s3://iaempe/nota/icms.parquet"</span>)
-<span class="c-ok">↑ s3://iaempe/nota/icms.parquet (84.1 kB, 0.3 s)</span>
+df = s3pe.<span class="c-cmd">read_s3</span>(<span class="c-str">"series/sales.csv.gz"</span>,
+                  bucket=<span class="c-str">"my-bucket"</span>)        <span class="c-cmt"># DataFrame</span>
+s3pe.<span class="c-cmd">write_s3</span>(df, <span class="c-str">"s3://my-bucket/reports/sales.parquet"</span>)
+<span class="c-ok">↑ s3://my-bucket/reports/sales.parquet (84.1 kB, 0.3 s)</span>
 
-<span class="c-kw">for</span> o <span class="c-kw">in</span> s3pe.<span class="c-cmd">list_s3</span>(<span class="c-str">"s3://iaempe/dados/"</span>):
+<span class="c-kw">for</span> o <span class="c-kw">in</span> s3pe.<span class="c-cmd">list_s3</span>(<span class="c-str">"s3://my-bucket/data/"</span>):
     print(o.size, o.key)</code></pre>
       </div>
     </div>
@@ -113,7 +113,7 @@ s3pe.<span class="c-cmd">write_s3</span>(df, <span class="c-str">"s3://iaempe/no
       <div class="grid f3">
         <div class="card"><div class="ic">🗂️</div><h3>Formats by extension</h3><p><code>.json</code> → dict, <code>.csv</code>/<code>.csv.gz</code>/<code>.tsv</code>/<code>.parquet</code>/<code>.xlsx</code> → DataFrame, text files → str, anything else → bytes. <code>format=</code> overrides; extra arguments go to pandas.</p></div>
         <div class="card"><div class="ic">🦀</div><h3>A Rust core</h3><p>Signing, retries and checks happen in the s3pe crate; the GIL is released during transfers. Wheels for Linux (x86_64, aarch64), macOS and Windows, Python 3.9 or later.</p></div>
-        <div class="card"><div class="ic">🔏</div><h3>Signed the way Garage wants</h3><p>AWS Signature V4 over the real SHA-256 of the body. No unsigned payloads, no <code>aws-chunked</code> trailers, path-style URLs.</p></div>
+        <div class="card"><div class="ic">🔏</div><h3>Signed the way every store accepts</h3><p>AWS Signature V4 over the real SHA-256 of the body. No unsigned payloads, no <code>aws-chunked</code> trailers (which some stores reject), path-style URLs.</p></div>
         <div class="card"><div class="ic">🔁</div><h3>Retries that know when to stop</h3><p>Connection failures and HTTP 429/500/502/503/504: three tries, 1 s then 2 s. Never on other 4xx.</p></div>
         <div class="card"><div class="ic">✅</div><h3>Every byte accounted for</h3><p>ETag against the local MD5 after a PUT; Content-Length and MD5 after a GET. Downloads land in a <code>.s3pe-part</code> file and are renamed when complete.</p></div>
         <div class="card"><div class="ic">🧭</div><h3>Typed exceptions</h3><p><code>NotFoundError</code>, <code>AccessDeniedError</code>, <code>HttpError</code> (with <code>.status</code>, <code>.code</code>), <code>TransportError</code>, <code>ConfigError</code>, <code>IntegrityError</code>, all under <code>S3Error</code>.</p></div>
@@ -124,7 +124,7 @@ s3pe.<span class="c-cmd">write_s3</span>(df, <span class="c-str">"s3://iaempe/no
   <section id="verbs">
     <div class="wrap">
       <h2>The nine verbs</h2>
-      <p class="sub">Module-level verbs over a default client (<code>s3pe.configure(bucket="iaempe")</code> sets it), and the same verbs as methods of <code>s3pe.Client</code>.</p>
+      <p class="sub">Module-level verbs over a default client (<code>s3pe.configure(bucket="my-bucket")</code> sets it), and the same verbs as methods of <code>s3pe.Client</code>.</p>
       <div class="scroll"><table class="cmp">
         <thead><tr><th>Verb</th><th>Does</th></tr></thead>
         <tbody>
@@ -139,7 +139,7 @@ s3pe.<span class="c-cmd">write_s3</span>(df, <span class="c-str">"s3://iaempe/no
           <tr><td><code>buckets_s3</code></td><td>list of <code>Bucket</code></td></tr>
         </tbody>
       </table></div>
-      <p class="note">A key is <code>s3://bucket/key</code>, or a bare key when the bucket is configured (<code>S3PE_BUCKET</code> or the client). Credentials: <code>AWS_ACCESS_KEY_ID</code> and <code>AWS_SECRET_ACCESS_KEY</code>; endpoint <code>S3PE_ENDPOINT</code>, default <code>https://s3.pe.gov.br</code>.</p>
+      <p class="note">A key is <code>s3://bucket/key</code>, or a bare key when the bucket is configured (<code>S3PE_BUCKET</code> or the client). Endpoint: <code>S3PE_ENDPOINT</code> (<code>https://host[:port]</code>, required); credentials: <code>AWS_ACCESS_KEY_ID</code> and <code>AWS_SECRET_ACCESS_KEY</code>.</p>
     </div>
   </section>
 
@@ -168,21 +168,21 @@ s3pe.<span class="c-cmd">write_s3</span>(df, <span class="c-str">"s3://iaempe/no
       <div class="grid f2">
         <div><div class="panel">
 <pre><code><span class="c-cmt"># an explicit client</span>
-s3 = s3pe.<span class="c-ty">Client</span>(endpoint=<span class="c-str">"http://127.0.0.1:9003"</span>,
-                 bucket=<span class="c-str">"iaempe"</span>,
-                 access_key=<span class="c-str">"GK…"</span>, secret_key=<span class="c-str">"…"</span>)
-s3.<span class="c-cmd">read</span>(<span class="c-str">"dados/metadata.json"</span>)
-s3.<span class="c-cmd">write</span>(df, <span class="c-str">"nota/icms.csv"</span>, index=<span class="c-kw">False</span>)
-s3.<span class="c-cmd">download</span>(<span class="c-str">"dados/pe_municipios.geojson"</span>, <span class="c-str">"pe.geojson"</span>)
-s3.<span class="c-cmd">upload</span>(<span class="c-str">"figura1.png"</span>, <span class="c-str">"nota/"</span>)
-s3.<span class="c-cmd">head</span>(<span class="c-str">"etl/painel.parquet"</span>)      <span class="c-cmt"># S3Object or None</span>
+s3 = s3pe.<span class="c-ty">Client</span>(endpoint=<span class="c-str">"http://127.0.0.1:9000"</span>,
+                 bucket=<span class="c-str">"my-bucket"</span>,
+                 access_key=<span class="c-str">"AKIA…"</span>, secret_key=<span class="c-str">"…"</span>)
+s3.<span class="c-cmd">read</span>(<span class="c-str">"data/manifest.json"</span>)
+s3.<span class="c-cmd">write</span>(df, <span class="c-str">"reports/sales.csv"</span>, index=<span class="c-kw">False</span>)
+s3.<span class="c-cmd">download</span>(<span class="c-str">"data/regions.geojson"</span>, <span class="c-str">"pe.geojson"</span>)
+s3.<span class="c-cmd">upload</span>(<span class="c-str">"figure1.png"</span>, <span class="c-str">"reports/"</span>)
+s3.<span class="c-cmd">head</span>(<span class="c-str">"etl/sales.parquet"</span>)      <span class="c-cmt"># S3Object or None</span>
 
 s3pe.<span class="c-cmd">quiet</span>()                        <span class="c-cmt"># or S3PE_QUIET=1</span></code></pre>
         </div></div>
         <div><div class="panel">
 <pre><code><span class="c-cmt"># errors and formats</span>
 <span class="c-kw">try</span>:
-    s3pe.<span class="c-cmd">read_s3</span>(<span class="c-str">"s3://iaempe/missing.json"</span>)
+    s3pe.<span class="c-cmd">read_s3</span>(<span class="c-str">"s3://my-bucket/missing.json"</span>)
 <span class="c-kw">except</span> s3pe.<span class="c-ty">NotFoundError</span>:
     ...
 <span class="c-kw">except</span> s3pe.<span class="c-ty">HttpError</span> <span class="c-kw">as</span> e:
@@ -201,7 +201,7 @@ s3pe.<span class="c-cmd">write_s3</span>(df, <span class="c-str">"s3://b/series.
     <div class="wrap">
       <h2>Architecture</h2>
       <p class="sub">The Python package is a thin layer: formats and logging in Python, everything on the wire in the Rust crate through PyO3. R and Go reimplement the same specification; the four signers reproduce the AWS documentation vector. One repository, one version, one <a href="https://github.com/StrategicProjects/s3pe/blob/main/DESIGN.md">DESIGN.md</a>.</p>
-      <div class="diagram"><img src="../assets/architecture.svg" alt="Four editions (R on httr2 and openssl; Python as a PyO3 binding on the Rust crate; the Rust crate on ureq and rustls with the s3pe command line; Go on net/http) share one specification and talk to s3.pe.gov.br, a Garage server, or any S3 store." loading="lazy" /></div>
+      <div class="diagram"><img src="../assets/architecture.svg" alt="Four editions (R on httr2 and openssl; Python as a PyO3 binding on the Rust crate; the Rust crate on ureq and rustls with the s3pe command line; Go on net/http) share one specification and talk to any S3-compatible store." loading="lazy" /></div>
       <div class="grid f3" style="margin-top:18px">
         <div class="card"><h3>R</h3><pre><code>install.packages("s3pe")</code></pre><div class="note"><a href="../r/">R edition →</a></div></div>
         <div class="card"><h3>Rust</h3><pre><code>cargo add s3pe</code></pre><div class="note"><a href="../rust/">Rust edition →</a></div></div>
@@ -213,7 +213,7 @@ s3pe.<span class="c-cmd">write_s3</span>(df, <span class="c-str">"s3://b/series.
 
 <footer>
   <div class="wrap foot-inner">
-    <div>s3pe · MIT · André Leite, Marcos Wasiliew, Hugo Vasconcelos, Carlos Amorim, Diogo Bezerra, Júlia Nascimento Barreto</div>
+    <div>s3pe · MIT · André Leite, Marcos Wasiliew, Hugo Vasconcelos, Carlos Amorim, Diogo Bezerra, Júlia Nascimento Barreto · Made in Pernambuco 🌵</div>
     <div class="foot-links">
       <a href="https://github.com/StrategicProjects/s3pe">GitHub</a>
       <a href="https://github.com/StrategicProjects/s3pe/blob/main/CHANGELOG.md">Changelog</a>

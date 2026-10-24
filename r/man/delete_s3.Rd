@@ -21,6 +21,6 @@ Deleting an object that does not exist is not an error.
 }
 \examples{
 \dontshow{if (interactive()) withAutoprint(\{ # examplesIf}
-delete_s3("nota_tecnica/rascunho.csv", bucket = "iaempe")
+delete_s3("report/draft.csv", bucket = "my-bucket")
 \dontshow{\}) # examplesIf}
 }

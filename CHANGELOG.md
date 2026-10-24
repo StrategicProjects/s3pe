@@ -3,6 +3,16 @@
 All four editions (Rust crate, Python package, R package, Go module) share
 one version and this file.
 
+## 0.2.0 — 2026-10-23
+
+A generic client. The endpoint is no longer defaulted: set `S3PE_ENDPOINT`
+(or `AWS_ENDPOINT_URL`), pass it to the client, or in R call
+`use_endpoint()`. Without one, every edition raises a configuration error
+before any request. Documentation, examples and package descriptions no
+longer refer to a particular store; `DEFAULT_ENDPOINT` (Rust, Python) and
+`DefaultEndpoint` (Go) were removed. R gains `use_bucket()` and
+`use_endpoint()` for the session.
+
 ## 0.1.0 — 2026-10-23
 
 Initial release.

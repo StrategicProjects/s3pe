@@ -3,9 +3,9 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>s3pe — read and write data on s3.pe.gov.br</title>
-<meta name="description" content="The same nine verbs in R, Python, Rust and Go to read, write, list and delete objects on s3.pe.gov.br, the S3 object store of Pernambuco, or any S3-style store. SigV4 signing, retries and integrity checks built in." />
-<meta property="og:title" content="s3pe — read and write data on s3.pe.gov.br" />
+<title>s3pe — read and write data on any S3 store</title>
+<meta name="description" content="The same nine verbs in R, Python, Rust and Go to read, write, list and delete objects on any S3-compatible store. SigV4 signing, retries and integrity checks built in." />
+<meta property="og:title" content="s3pe — read and write data on any S3 store" />
 <meta property="og:description" content="read_s3, write_s3 and seven more verbs, in R, Python, Rust and Go. Credentials from the environment, format from the extension, one line per transfer." />
 <meta property="og:type" content="website" />
 <meta property="og:url" content="https://strategicprojects.github.io/s3pe/" />
@@ -106,8 +106,8 @@
     <div class="wrap hero-grid">
       <div>
         <span class="eyebrow">◆ R · Python · Rust · Go</span>
-        <h1>Data in and out of <span class="grad">s3.pe.gov.br</span>, in one line.</h1>
-        <p class="lead">The same nine verbs in four languages for the S3 object store of Pernambuco, or any S3-style store. Credentials from the environment, format from the extension, every transfer signed, retried and checked.</p>
+        <h1>Data in and out of <span class="grad">any S3 store</span>, in one line.</h1>
+        <p class="lead">The same nine verbs in four languages for any S3-compatible object store: AWS S3, Garage, MinIO, Ceph. Endpoint and credentials from the environment, format from the extension, every transfer signed, retried and checked.</p>
         <div class="badges">
           <a href="https://github.com/StrategicProjects/s3pe/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/StrategicProjects/s3pe/actions/workflows/ci.yml/badge.svg"></a>
           <a href="https://CRAN.R-project.org/package=s3pe"><img alt="CRAN" src="https://www.r-pkg.org/badges/version/s3pe"></a>
@@ -127,17 +127,17 @@
         <div class="term-bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="term-title">R · Python · shell</span></div>
 <pre><code><span class="c-cmt"># R</span>
 <span class="c-kw">library</span>(s3pe)
-meta &lt;- <span class="c-cmd">read_s3</span>(<span class="c-str">"s3://iaempe/dados/metadata.json"</span>)
-<span class="c-ok">↓ s3://iaempe/dados/metadata.json (1.2 kB, 0.2 s)</span>
-<span class="c-cmd">write_s3</span>(icms, <span class="c-str">"s3://iaempe/nota/icms.parquet"</span>)
-<span class="c-ok">↑ s3://iaempe/nota/icms.parquet (84.1 kB, 0.3 s)</span>
+meta &lt;- <span class="c-cmd">read_s3</span>(<span class="c-str">"s3://my-bucket/data/manifest.json"</span>)
+<span class="c-ok">↓ s3://my-bucket/data/manifest.json (1.2 kB, 0.2 s)</span>
+<span class="c-cmd">write_s3</span>(sales, <span class="c-str">"s3://my-bucket/reports/sales.parquet"</span>)
+<span class="c-ok">↑ s3://my-bucket/reports/sales.parquet (84.1 kB, 0.3 s)</span>
 
 <span class="c-cmt"># Python</span>
-df = s3pe.<span class="c-cmd">read_s3</span>(<span class="c-str">"series/estado/icms.csv.gz"</span>, bucket=<span class="c-str">"horizonte-fiscal"</span>)
+df = s3pe.<span class="c-cmd">read_s3</span>(<span class="c-str">"series/sales.csv.gz"</span>, bucket=<span class="c-str">"my-bucket"</span>)
 
 <span class="c-cmt"># shell</span>
-<span class="c-prompt">$</span> <span class="c-cmd">s3pe</span> put painel.parquet s3://iaempe/etl/
-<span class="c-ok">↑ painel.parquet → s3://iaempe/etl/painel.parquet (12.3 MB, 0.8 s)</span></code></pre>
+<span class="c-prompt">$</span> <span class="c-cmd">s3pe</span> put sales.parquet s3://my-bucket/etl/
+<span class="c-ok">↑ sales.parquet → s3://my-bucket/etl/sales.parquet (12.3 MB, 0.8 s)</span></code></pre>
       </div>
     </div>
   </section>
@@ -192,14 +192,14 @@ cargo install s3pe</code></pre>
       <p class="sub">The parts that make the difference between "it usually works" and "it worked, and we know it did".</p>
       <div class="diagram" style="margin-bottom:18px"><img src="assets/request-flow.svg" alt="Six steps: resolve the key, hash the payload, sign with SigV4, send with Content-Length, retry on 429 and 5xx after 1 and 2 seconds, verify the ETag and Content-Length. Success prints one log line; errors are typed." loading="lazy" /></div>
       <div class="steps">
-        <div class="step"><div class="n">01</div><h4>Sign</h4><p>AWS Signature V4 over the real SHA-256 of the payload. No unsigned payloads, no <code>aws-chunked</code> (Garage rejects it). The four signers reproduce the AWS documentation vector.</p></div>
+        <div class="step"><div class="n">01</div><h4>Sign</h4><p>AWS Signature V4 over the real SHA-256 of the payload. No unsigned payloads, no <code>aws-chunked</code> (some stores reject it). The four signers reproduce the AWS documentation vector.</p></div>
         <div class="step"><div class="n">02</div><h4>Retry</h4><p>Connection failures and HTTP 429, 500, 502, 503, 504: three tries, 1 s then 2 s. Never on other 4xx.</p></div>
         <div class="step"><div class="n">03</div><h4>Verify</h4><p>After an upload the server's ETag against the local MD5; after a download the byte count and the MD5 of what arrived.</p></div>
         <div class="step"><div class="n">04</div><h4>Report</h4><p>One line per transfer, silenced with <code>S3PE_QUIET=1</code>. Errors are typed: not found, access denied, HTTP, transport, configuration, integrity.</p></div>
       </div>
       <div class="grid f2" style="margin-top:18px">
-        <div class="card"><div class="ic">🧪</div><h3>Tested three ways</h3><p>Each edition runs against a local fake S3 that recomputes and checks every signature, against the AWS documentation vector, and against s3.pe.gov.br itself when <code>S3PE_TEST_BUCKET</code> is set.</p></div>
-        <div class="card"><div class="ic">📄</div><h3>Decisions on record</h3><p>Why path-style, why our own signer, why no multipart yet: <a href="https://github.com/StrategicProjects/s3pe/blob/main/DESIGN.md">DESIGN.md</a> keeps the reasons, D1 to D11.</p></div>
+        <div class="card"><div class="ic">🧪</div><h3>Tested three ways</h3><p>Each edition runs against a local fake S3 that recomputes and checks every signature, against the AWS documentation vector, and against a real store when <code>S3PE_ENDPOINT</code> and <code>S3PE_TEST_BUCKET</code> are set.</p></div>
+        <div class="card"><div class="ic">📄</div><h3>Decisions on record</h3><p>Why path-style, why our own signer, why no default endpoint: <a href="https://github.com/StrategicProjects/s3pe/blob/main/DESIGN.md">DESIGN.md</a> keeps the reasons.</p></div>
       </div>
     </div>
   </section>
@@ -207,29 +207,29 @@ cargo install s3pe</code></pre>
   <section id="architecture">
     <div class="wrap">
       <h2>Architecture</h2>
-      <p class="sub">Four implementations, one specification, one store. The Python package is a binding on the Rust crate; R and Go are native. Each edition has its own page: <a href="r/">R</a>, <a href="python/">Python</a>, <a href="rust/">Rust</a>, <a href="go/">Go</a>.</p>
-      <div class="diagram"><img src="assets/architecture.svg" alt="Four editions (R on httr2 and openssl; Python as a PyO3 binding on the Rust crate; the Rust crate on ureq and rustls with the s3pe command line; Go on net/http) share one specification: resolve the key, sign with SigV4, retry, verify, log one line. All talk to s3.pe.gov.br, a Garage server with path-style URLs, or any S3 store." loading="lazy" /></div>
+      <p class="sub">Four implementations, one specification, any store. The Python package is a binding on the Rust crate; R and Go are native. Each edition has its own page: <a href="r/">R</a>, <a href="python/">Python</a>, <a href="rust/">Rust</a>, <a href="go/">Go</a>.</p>
+      <div class="diagram"><img src="assets/architecture.svg" alt="Four editions (R on httr2 and openssl; Python as a PyO3 binding on the Rust crate; the Rust crate on ureq and rustls with the s3pe command line; Go on net/http) share one specification: resolve the key, sign with SigV4, retry, verify, log one line. All talk to any S3-compatible store through path-style URLs." loading="lazy" /></div>
     </div>
   </section>
 
   <section id="config" class="alt">
     <div class="wrap">
       <h2>Configuration</h2>
-      <p class="sub">Argument, then environment, then default. Two variables are enough on a machine that talks to s3.pe.gov.br.</p>
+      <p class="sub">Argument, then environment, then default. Three variables are enough: the endpoint and the two halves of the key.</p>
       <div class="grid f2">
         <div>
           <div class="panel"><h4>~/.Renviron, .env or the shell</h4>
-<pre><code>AWS_ACCESS_KEY_ID=GK...
+<pre><code>S3PE_ENDPOINT=https://s3.example.org
+AWS_ACCESS_KEY_ID=...
 AWS_SECRET_ACCESS_KEY=...
-S3PE_BUCKET=iaempe                 <span class="c-cmt"># optional: bare keys</span>
-<span class="c-cmt"># S3PE_ENDPOINT=http://127.0.0.1:9003   inside the server</span></code></pre>
+S3PE_BUCKET=my-bucket              <span class="c-cmt"># optional: bare keys</span></code></pre>
           </div>
-          <p class="note">Never put the key in a script or a repository. Inside the condepe server the endpoint is local; from anywhere else the default <code>https://s3.pe.gov.br</code> applies.</p>
+          <p class="note">Never put the key in a script or a repository. In R, <code>use_endpoint()</code> and <code>use_bucket()</code> set the two for the session; in Python, <code>s3pe.configure()</code>.</p>
         </div>
         <div class="scroll"><table class="cmp">
           <thead><tr><th>Setting</th><th>Environment</th><th>Default</th></tr></thead>
           <tbody>
-            <tr><td>endpoint</td><td><code>S3PE_ENDPOINT</code>, <code>AWS_ENDPOINT_URL</code></td><td><code>https://s3.pe.gov.br</code></td></tr>
+            <tr><td>endpoint</td><td><code>S3PE_ENDPOINT</code>, <code>AWS_ENDPOINT_URL</code></td><td>required</td></tr>
             <tr><td>region</td><td><code>AWS_REGION</code>, <code>AWS_DEFAULT_REGION</code></td><td><code>us-east-1</code></td></tr>
             <tr><td>credentials</td><td><code>AWS_ACCESS_KEY_ID</code>, <code>AWS_SECRET_ACCESS_KEY</code></td><td>required</td></tr>
             <tr><td>bucket</td><td><code>S3PE_BUCKET</code></td><td>none: use <code>s3://bucket/key</code></td></tr>
@@ -243,7 +243,7 @@ S3PE_BUCKET=iaempe                 <span class="c-cmt"># optional: bare keys</sp
 
 <footer>
   <div class="wrap foot-inner">
-    <div>s3pe · MIT · André Leite, Marcos Wasiliew, Hugo Vasconcelos, Carlos Amorim, Diogo Bezerra, Júlia Nascimento Barreto</div>
+    <div>s3pe · MIT · André Leite, Marcos Wasiliew, Hugo Vasconcelos, Carlos Amorim, Diogo Bezerra, Júlia Nascimento Barreto · Made in Pernambuco 🌵</div>
     <div class="foot-links">
       <a href="https://github.com/StrategicProjects/s3pe">GitHub</a>
       <a href="https://github.com/StrategicProjects/s3pe/blob/main/CHANGELOG.md">Changelog</a>
