@@ -14,6 +14,17 @@
 //	err = s3pe.DeleteS3(ctx, "s3://my-bucket/etl/old.parquet")
 //	buckets, err := s3pe.BucketsS3(ctx)
 //
+// And, since 0.3.0, a few more: [CopyS3] (server-side copy), [DeleteManyS3]
+// (1000 keys per request), [ListDirS3] (one level: objects and "folders"),
+// [PresignS3] (a URL that works without credentials for a while),
+// [SyncUpS3] and [SyncDownS3] (a directory and a prefix kept equal by
+// ETag, a manifest last). [Client.WriteWith] and [Client.UploadWith] take
+// [PutOptions]: user metadata (x-amz-meta-*) and any other header, so
+// Cache-Control, storage classes and server-side encryption headers reach
+// stores that support them. Bodies above 64 MiB go up as a multipart
+// upload, 16 MiB parts, four at a time, aborted on failure, with the final
+// ETag checked (configurable in [Config]).
+//
 // The package-level verbs share a client built from the environment. An
 // explicit [Client] takes the same settings in a [Config]; a default bucket
 // makes keys short:
@@ -30,6 +41,7 @@
 //	region       AWS_REGION, AWS_DEFAULT_REGION       us-east-1
 //	credentials  AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_SESSION_TOKEN   required
 //	bucket       S3PE_BUCKET                          none: use s3://bucket/key
+//	multipart    S3PE_MULTIPART_THRESHOLD, S3PE_PART_SIZE (bytes), S3PE_PARALLEL   64 MiB, 16 MiB, 4
 //	quiet        S3PE_QUIET                           off
 //
 // URLs are always path-style (https://host/bucket/key); a key may be an
@@ -38,17 +50,22 @@
 // # What "dependable" means here
 //
 // Requests are signed with AWS Signature V4 over the real SHA-256 of the
-// payload (no aws-chunked, which some stores, Garage among them, reject). Connection failures and
+// payload (no aws-chunked, which some stores, Garage among them, reject);
+// every x-amz-* header is part of the signature. Connection failures and
 // HTTP 429/500/502/503/504 are retried twice, with a 1 s then 2 s pause;
 // other errors are returned at once, typed: errors.Is(err, [ErrNotFound]),
 // [ErrAccessDenied], [ErrConfig], [ErrIntegrity], [ErrTransport], [ErrHTTP],
 // with the details in an [*Error]. After an upload the server's ETag is
-// compared with the local MD5; after a download the byte count is compared
-// with Content-Length and, when the ETag is an MD5, with the MD5 of what
+// compared with the local MD5 (part by part, and as a whole, for multipart
+// uploads); after a download the byte count is compared with
+// Content-Length and, when the ETag is an MD5, with the MD5 of what
 // arrived. Downloads go to a .s3pe-part file renamed when complete. One
 // line per transfer goes to the logger (standard error by default):
 //
 //	↑ s3://my-bucket/etl/sales.parquet (12.3 MB, 0.8 s)
+//
+// Out of scope, on purpose: ACLs (manage access with keys and policies)
+// and object versioning.
 //
 // This is the Go edition of s3pe; the same package exists as a Rust crate
 // with a command line (cargo install s3pe), for Python (pip install s3pe)

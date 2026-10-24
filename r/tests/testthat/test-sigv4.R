@@ -49,3 +49,24 @@ test_that("amz_date is UTC", {
   t <- as.POSIXct("2013-05-24 00:00:00", tz = "UTC")
   expect_equal(amz_date(t), "20130524T000000Z")
 })
+
+test_that("the AWS pre-signed URL example signs as documented (D16)", {
+  qs <- sigv4_presign(
+    method = "GET", host = "examplebucket.s3.amazonaws.com", path = "/test.txt",
+    amz_date = "20130524T000000Z", expires = 86400,
+    access_key = "AKIAIOSFODNN7EXAMPLE",
+    secret_key = "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY", region = "us-east-1"
+  )
+  expect_true(startsWith(qs, paste0(
+    "X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIAIOSFODNN7EXAMPLE%2F20130524%2Fus-east-1%2Fs3%2Faws4_request",
+    "&X-Amz-Date=20130524T000000Z&X-Amz-Expires=86400&X-Amz-SignedHeaders=host"
+  )))
+  expect_true(endsWith(qs, "X-Amz-Signature=aeeed9bbccd4d02ee5c0109b86d86835f995330da4c265957d157751f604d404"))
+})
+
+test_that("multipart ETags, hex decoding and Content-MD5", {
+  expect_equal(hex_to_raw("00ff10"), as.raw(c(0, 255, 16)))
+  e <- multipart_etag(c("0cc175b9c0f1b6a831c399e269772661", "92eb5ffee6ae2fec3ad71c777531578f"))
+  expect_match(e, "^[0-9a-f]{32}-2$")
+  expect_equal(content_md5(charToRaw("foobar")), "OFj2IjCsPJFfMAxmQxLGPw==")
+})

@@ -3,6 +3,26 @@
 All four editions (Rust crate, Python package, R package, Go module) share
 one version and this file.
 
+## 0.3.0 — 2026-10-24
+
+- Multipart upload, automatic above 64 MiB (16 MiB parts, 4 in parallel,
+  abort on failure, final ETag checked); `S3PE_MULTIPART_THRESHOLD`,
+  `S3PE_PART_SIZE`, `S3PE_PARALLEL`. Parts carry
+  `Content-Type: application/octet-stream` (some web application firewalls
+  refuse untyped large bodies).
+- `presign_s3`: pre-signed GET/PUT URLs (SigV4 query string, up to 7 days),
+  checked against the AWS documentation vector in the four editions.
+- `copy_s3` (server-side copy), `delete_s3` with many keys (`DeleteObjects`,
+  1000 per request), `list_s3(delimiter = "/")` (one level, common
+  prefixes), `metadata` and `headers` on `write_s3`/`upload_s3`
+  (`x-amz-meta-*`, Cache-Control, SSE headers, …), user metadata on
+  `head_s3`.
+- `sync_up_s3` / `sync_down_s3`: a directory and a prefix mirrored by ETag,
+  with a `last` file (a manifest) and optional deletion; `s3pe sync` in the
+  CLI, plus `cp`, `presign`, `ls -d`, batch `rm` and `put --metadata/--header`.
+- Non-XML error bodies (proxy pages) are kept in the error message.
+- Out of scope, documented: ACLs and versioning (DESIGN.md D19).
+
 ## 0.2.0 — 2026-10-23
 
 A generic client. The endpoint is no longer defaulted: set `S3PE_ENDPOINT`

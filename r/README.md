@@ -147,6 +147,54 @@ Pass `format = ` when the extension does not say what you want
 (`format = "raw"` always works), and `...` to reach the reader or writer
 (`col_types`, `simplifyVector`, `pretty`, `na`, ...).
 
+## Big files
+
+Nothing to do: bodies larger than 64 MiB go up as a multipart upload
+(16 MiB parts, one by one, aborted on any failure, every part's ETag
+checked). Both knobs live in `s3_config(multipart_threshold =, part_size =)`
+or in `S3PE_MULTIPART_THRESHOLD` and `S3PE_PART_SIZE`.
+
+```r
+upload_s3("exports/full.parquet", "archive/full.parquet", bucket = "my-bucket")
+#> ↑ exports/full.parquet → s3://my-bucket/archive/full.parquet (1.2 GB, 48.3 s)
+```
+
+Uploads also take `metadata` (user metadata, returned by `head_s3()`) and
+`headers` (any extra header: `Cache-Control`, `Content-Disposition`,
+`x-amz-storage-class`, server-side encryption):
+
+```r
+write_s3(sales, "reports/sales.csv", bucket = "my-bucket",
+         metadata = c(author = "ana", run = "2026-10-23"),
+         headers = c("Cache-Control" = "max-age=3600"))
+head_s3("reports/sales.csv", bucket = "my-bucket")$metadata[[1]]$author
+#> [1] "ana"
+```
+
+## Pre-signed URLs
+
+A link anyone can use for a while, without credentials:
+
+```r
+presign_s3("reports/report.pdf", bucket = "my-bucket", expires = 3600)
+#> "https://s3.example.org/my-bucket/reports/report.pdf?X-Amz-Algorithm=..."
+presign_s3("incoming/upload.csv", bucket = "my-bucket", method = "PUT")  # accept an upload
+```
+
+## Copy, delete, sync
+
+```r
+copy_s3("etl/sales.parquet", "archive/sales-2026.parquet", bucket = "my-bucket")
+delete_s3(list_s3("tmp/", bucket = "my-bucket")$key, bucket = "my-bucket")  # one request
+list_s3("series/", bucket = "my-bucket", delimiter = "/")                   # one level
+
+# mirror a directory to a prefix, by ETag; the manifest goes up last
+sync_up_s3("output/", "reports/2026/", bucket = "my-bucket",
+           delete = TRUE, last = "manifest.json")
+#> ✔ sync output/ → s3://my-bucket/reports/2026/: 12 uploaded, 30 unchanged, 0 deleted (3.2 s)
+sync_down_s3("s3://my-bucket/reports/2026/", "reports-2026/")
+```
+
 ## Errors
 
 Network problems are errors, not warnings: a pipeline that depends on

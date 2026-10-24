@@ -9,6 +9,8 @@ upload_s3(
   key = NULL,
   bucket = NULL,
   content_type = NULL,
+  metadata = NULL,
+  headers = NULL,
   config = s3_config()
 )
 }
@@ -22,6 +24,14 @@ ending in \code{/} gets the file's name appended.}
 
 \item{content_type}{Content type to store with the object.}
 
+\item{metadata}{Named character vector of user metadata, stored with the
+object as \verb{x-amz-meta-<name>} and returned by \code{\link[=head_s3]{head_s3()}}.}
+
+\item{headers}{Named character vector of extra headers to send with the
+upload: \code{Cache-Control}, \code{Content-Disposition}, \code{Content-Encoding},
+\code{x-amz-storage-class}, \code{x-amz-server-side-encryption}, ... (\verb{x-amz-*}
+headers are signed).}
+
 \item{config}{An \code{\link[=s3_config]{s3_config()}}.}
 }
 \value{
@@ -31,10 +41,14 @@ Invisibly, a one-row tibble: \code{bucket}, \code{key}, \code{size}, \code{etag}
 \description{
 Streams a file to the store (two passes over the file: one to hash it,
 one to send it). The server's ETag is compared with the file's MD5.
+Files larger than the config's \code{multipart_threshold} (64 MiB by default)
+go up as a multipart upload, read part by part, aborted on any failure.
 }
 \examples{
 \dontshow{if (interactive()) withAutoprint(\{ # examplesIf}
 upload_s3("output/panel.parquet", "etl/", bucket = "my-bucket")
 upload_s3("figure1.png", "s3://my-bucket/report/figure1.png")
+upload_s3("report.pdf", "public/", bucket = "my-bucket",
+          headers = c("Content-Disposition" = "inline"))
 \dontshow{\}) # examplesIf}
 }

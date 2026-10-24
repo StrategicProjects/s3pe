@@ -56,6 +56,35 @@ s3.delete("etl/old.parquet")?;
 # Ok::<(), s3pe::Error>(())
 ```
 
+### Big files, copies, batches, folders, metadata, pre-signed URLs, sync
+
+```rust
+use s3pe::{PutOptions, SyncOptions};
+use std::time::Duration;
+
+s3.upload("backup.tar", "backups/", None)?;              // > 64 MiB: multipart, 4 parts at a time
+s3.copy("etl/sales.parquet", "archive/sales-2026.parquet")?;
+let keys: Vec<String> = s3.list("tmp/")?.into_iter().map(|o| o.key).collect();
+s3.delete_many(&keys)?;                                   // DeleteObjects, 1000 per request
+let level = s3.list_dir("")?;                             // level.objects, level.prefixes ("folders")
+let opts = PutOptions {
+    content_type: None,
+    metadata: vec![("author".into(), "ana".into())],       // x-amz-meta-author
+    headers: vec![("Cache-Control".into(), "max-age=3600".into())],
+};
+s3.write_with("reports/sales.csv", csv_bytes, &opts)?;
+let url = s3.presign("reports/report.pdf", "GET", Duration::from_secs(3600))?;
+let report = s3.sync_up("./out", "reports/", &SyncOptions { delete: false, last: Some("manifest.json".into()) })?;
+s3.sync_down("reports/", "./mirror", &SyncOptions::default())?;
+# Ok::<(), s3pe::Error>(())
+```
+
+The multipart knobs: `.multipart_threshold()`, `.part_size()`, `.parallel()`
+on the builder, or `S3PE_MULTIPART_THRESHOLD`, `S3PE_PART_SIZE`,
+`S3PE_PARALLEL` (defaults 64 MiB, 16 MiB, 4). `headers` are sent as given,
+so `x-amz-server-side-encryption: AES256` turns on SSE where the store
+supports it. No ACLs and no versioning, by design.
+
 ### Configuration
 
 | Setting | Environment | Default |
@@ -100,7 +129,13 @@ s3pe cat s3://my-bucket/data/manifest.json | jq .version
 s3pe get s3://my-bucket/data/regions.geojson        # to ./regions.geojson
 s3pe put sales.parquet s3://my-bucket/etl/           # keeps the file name
 s3pe head s3://my-bucket/etl/sales.parquet
-s3pe rm s3://my-bucket/etl/old.parquet
+s3pe rm s3://my-bucket/etl/old.parquet s3://my-bucket/etl/older.parquet   # one request
+s3pe ls -d s3://my-bucket/                            # one level: "folders" and files
+s3pe cp s3://my-bucket/etl/sales.parquet s3://my-bucket/archive/sales-2026.parquet
+s3pe put report.pdf s3://my-bucket/reports/ --metadata author=ana --header "Cache-Control: max-age=3600"
+s3pe presign s3://my-bucket/reports/report.pdf --expires 3600
+s3pe sync ./out s3://my-bucket/reports/ --last manifest.json   # upload what changed, manifest last
+s3pe sync s3://my-bucket/reports/ ./mirror --delete            # download what changed
 s3pe --endpoint http://127.0.0.1:9000 -b my-bucket ls data/   # a local MinIO or Garage
 ```
 

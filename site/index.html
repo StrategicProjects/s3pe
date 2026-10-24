@@ -166,8 +166,8 @@ cargo install s3pe</code></pre>
 
   <section id="verbs">
     <div class="wrap">
-      <h2>The nine verbs</h2>
-      <p class="sub">A key is <code>s3://bucket/key</code>, or a bare key when the bucket is configured. Nothing else to learn.</p>
+      <h2>The nine verbs, and four more</h2>
+      <p class="sub">A key is <code>s3://bucket/key</code>, or a bare key when the bucket is configured. Files above 64 MiB go up as a multipart upload by themselves; <code>metadata</code> and <code>headers</code> ride along on writes; <code>delete_s3</code> takes many keys; <code>list_s3</code> lists one level with a delimiter.</p>
       <div class="scroll"><table class="cmp">
         <thead><tr><th>Verb</th><th>Does</th><th>R and Python return</th></tr></thead>
         <tbody>
@@ -180,6 +180,9 @@ cargo install s3pe</code></pre>
           <tr><td><code>head_s3</code></td><td>HEAD: size, type, date, ETag</td><td>one record, or nothing</td></tr>
           <tr><td><code>delete_s3</code></td><td>DELETE, idempotent</td><td>nothing</td></tr>
           <tr><td><code>buckets_s3</code></td><td>the buckets the credentials see</td><td>names and creation dates</td></tr>
+          <tr><td><code>copy_s3</code></td><td>server-side copy</td><td>the new object</td></tr>
+          <tr><td><code>presign_s3</code></td><td>a URL that works without credentials for a while</td><td>string (GET or PUT, up to 7 days)</td></tr>
+          <tr><td><code>sync_up_s3</code> / <code>sync_down_s3</code></td><td>mirror a directory and a prefix by ETag, a manifest last</td><td>what was transferred, skipped, deleted</td></tr>
         </tbody>
       </table></div>
       <p class="note">Rust and Go expose the same verbs (<code>s3pe::read_s3</code>, <code>s3pe.ReadS3</code>) and a <code>Client</code> for explicit settings; R has <code>s3_config()</code>.</p>

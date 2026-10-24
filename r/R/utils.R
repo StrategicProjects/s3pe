@@ -85,6 +85,15 @@ content_type_for <- function(key) {
   )
 }
 
+#' Escape text for an XML element
+#' @noRd
+xml_escape <- function(x) {
+  x <- gsub("&", "&amp;", x, fixed = TRUE)
+  x <- gsub("<", "&lt;", x, fixed = TRUE)
+  x <- gsub(">", "&gt;", x, fixed = TRUE)
+  gsub("\"", "&quot;", x, fixed = TRUE)
+}
+
 #' Decode the five XML entities and numeric references
 #' @noRd
 xml_unescape <- function(x) {

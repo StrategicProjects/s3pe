@@ -2,25 +2,28 @@
 % Please edit documentation in R/bucket.R
 \name{delete_s3}
 \alias{delete_s3}
-\title{Delete an object}
+\title{Delete objects}
 \usage{
 delete_s3(key, bucket = NULL, config = s3_config())
 }
 \arguments{
-\item{key}{Object key inside \code{bucket}, or an \verb{s3://bucket/key} URL.}
+\item{key}{One or more keys (or \verb{s3://bucket/key} URLs).}
 
 \item{bucket}{Bucket; defaults to the config's bucket (\code{S3PE_BUCKET}).}
 
 \item{config}{An \code{\link[=s3_config]{s3_config()}}.}
 }
 \value{
-\code{TRUE}, invisibly.
+The number of keys deleted, invisibly.
 }
 \description{
-Deleting an object that does not exist is not an error.
+One key is a \code{DELETE}; several keys go in batches of 1000
+(\code{DeleteObjects}). Deleting an object that does not exist is not an
+error; an object the store refuses to delete is.
 }
 \examples{
 \dontshow{if (interactive()) withAutoprint(\{ # examplesIf}
 delete_s3("report/draft.csv", bucket = "my-bucket")
+delete_s3(list_s3("tmp/", bucket = "my-bucket")$key, bucket = "my-bucket")
 \dontshow{\}) # examplesIf}
 }

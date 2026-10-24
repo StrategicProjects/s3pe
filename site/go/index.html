@@ -122,8 +122,8 @@ objects, err := s3pe.<span class="c-cmd">ListS3</span>(ctx, <span class="c-str">
 
   <section id="verbs">
     <div class="wrap">
-      <h2>The nine verbs</h2>
-      <p class="sub">Package-level verbs over a client built from the environment on first use, and the same verbs as methods of <code>*Client</code>. Bytes in, bytes out: the module does not pick formats, the Python and R editions do.</p>
+      <h2>The nine verbs, and four more</h2>
+      <p class="sub">Package-level verbs over a client built from the environment on first use, and the same verbs as methods of <code>*Client</code>. Bytes in, bytes out: the module does not pick formats, the Python and R editions do. Files above 64 MiB go up as a multipart upload (parts in parallel, aborted cleanly on failure); <code>metadata</code> and <code>headers</code> ride along on writes. No ACLs and no versioning, by design.</p>
       <div class="scroll"><table class="cmp">
         <thead><tr><th>Verb</th><th>Does</th></tr></thead>
         <tbody>
@@ -133,9 +133,13 @@ objects, err := s3pe.<span class="c-cmd">ListS3</span>(ctx, <span class="c-str">
           <tr><td><code>UploadS3</code></td><td>PUT from a file, streaming, two passes</td></tr>
           <tr><td><code>ListS3</code></td><td>every <code>Object</code> under a prefix, all pages</td></tr>
           <tr><td><code>ExistsS3</code></td><td><code>bool</code></td></tr>
-          <tr><td><code>HeadS3</code></td><td><code>*Object</code> or nil: size, type, date, ETag</td></tr>
-          <tr><td><code>DeleteS3</code></td><td>idempotent</td></tr>
+          <tr><td><code>HeadS3</code></td><td><code>*Object</code> or nil: size, type, date, ETag, metadata</td></tr>
+          <tr><td><code>DeleteS3</code></td><td>idempotent; <code>DeleteManyS3</code> for batches of 1000</td></tr>
           <tr><td><code>BucketsS3</code></td><td><code>[]Bucket</code></td></tr>
+          <tr><td><code>CopyS3</code></td><td>server-side copy</td></tr>
+          <tr><td><code>ListDirS3</code></td><td>one level: objects and prefixes</td></tr>
+          <tr><td><code>PresignS3</code></td><td>a GET or PUT URL without credentials, up to 7 days</td></tr>
+          <tr><td><code>SyncUpS3 / SyncDownS3</code></td><td>a directory and a prefix mirrored by ETag, a manifest last</td></tr>
         </tbody>
       </table></div>
       <p class="note">A key is <code>s3://bucket/key</code>, or a bare key when the bucket is configured (<code>S3PE_BUCKET</code> or the client). Endpoint: <code>S3PE_ENDPOINT</code> (<code>https://host[:port]</code>, required); credentials: <code>AWS_ACCESS_KEY_ID</code> and <code>AWS_SECRET_ACCESS_KEY</code>.</p>

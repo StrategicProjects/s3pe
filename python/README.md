@@ -6,8 +6,9 @@
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.23606939.svg)](https://doi.org/10.5281/zenodo.23606939)
 
 Read and write data on any S3-compatible object store (AWS S3, Garage,
-MinIO, Ceph, …). Nine verbs, two environment variables, and a Rust core
-that signs, retries and checks every transfer.
+MinIO, Ceph, …). Nine verbs plus copy, pre-signed URLs and sync, three
+environment variables, and a Rust core that signs, retries and checks
+every transfer. Big files go up as multipart uploads by themselves.
 
 **Website:** <https://strategicprojects.github.io/s3pe/python/> ·
 **API reference:** <https://strategicprojects.github.io/s3pe/python/api/> ·
@@ -56,6 +57,36 @@ s3 = s3pe.Client(endpoint="http://127.0.0.1:9000", bucket="my-bucket",
 s3.read("data/manifest.json")
 s3.write(df, "reports/sales.csv")
 s3.list("data/")
+```
+
+### Big files, copies, batches, folders, metadata
+
+```python
+s3pe.upload_s3("backup.tar", "s3://my-bucket/backups/")   # > 64 MiB: multipart, 4 parts at a time
+s3pe.copy_s3("s3://my-bucket/etl/sales.parquet", "s3://my-bucket/archive/sales-2026.parquet")
+s3pe.delete_s3([o.key for o in s3pe.list_s3("s3://my-bucket/tmp/")], bucket="my-bucket")
+for e in s3pe.list_s3("s3://my-bucket/", delimiter="/"):      # one level: "folders" have size None
+    print("dir " if e.is_prefix else "file", e.key)
+s3pe.write_s3(df, "s3://my-bucket/reports/sales.csv",
+              metadata={"author": "ana"}, headers={"Cache-Control": "max-age=3600"})
+s3pe.head_s3("s3://my-bucket/reports/sales.csv").metadata     # {'author': 'ana'}
+```
+
+`metadata` becomes `x-amz-meta-*`; `headers` are sent as given, so
+`{"x-amz-server-side-encryption": "AES256"}` turns on SSE where the store
+supports it. `Client(multipart_threshold=..., part_size=..., parallel=...)`
+or `S3PE_MULTIPART_THRESHOLD`, `S3PE_PART_SIZE`, `S3PE_PARALLEL` tune the
+multipart upload (defaults 64 MiB, 16 MiB, 4).
+
+### Pre-signed URLs and sync
+
+```python
+url = s3pe.presign_s3("s3://my-bucket/reports/report.pdf", expires=3600)   # anyone can GET it for an hour
+url = s3pe.presign_s3("s3://my-bucket/inbox/upload.csv", method="PUT")
+
+r = s3pe.sync_up_s3("./out", "s3://my-bucket/reports/", last="manifest.json")   # by ETag; manifest last
+r.transferred, r.skipped, r.deleted
+s3pe.sync_down_s3("s3://my-bucket/reports/", "./mirror", delete=True)
 ```
 
 ### Formats
@@ -115,7 +146,9 @@ All errors derive from `s3pe.S3Error`: `NotFoundError` (404),
 
 `s3pe` lê e grava dados em qualquer armazenamento de objetos compatível com
 S3, com nove verbos: `read_s3`, `write_s3`, `download_s3`, `upload_s3`,
-`list_s3`, `delete_s3`, `exists_s3`, `head_s3`, `buckets_s3`. O endpoint e
+`list_s3`, `delete_s3`, `exists_s3`, `head_s3`, `buckets_s3`, mais
+`copy_s3`, `presign_s3` (URL temporária), `sync_up_s3` e `sync_down_s3`
+(espelho por ETag). Arquivos grandes sobem em partes automaticamente. O endpoint e
 as credenciais vêm do ambiente (`S3PE_ENDPOINT`, `AWS_ACCESS_KEY_ID`,
 `AWS_SECRET_ACCESS_KEY`); o formato vem da extensão do arquivo. Cada
 transferência imprime uma linha no terminal; `s3pe.quiet()` silencia.

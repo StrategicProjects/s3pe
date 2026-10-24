@@ -142,3 +142,65 @@ documentation and the examples use neutral names (`s3://my-bucket/…`,
 `https://s3.example.org`). The only trace of origin is a footer, "Made in
 Pernambuco 🌵". Worked examples for a specific store belong in that store's
 own documentation, not in the package.
+
+## D15. Multipart upload, automatic above 64 MiB (0.3.0)
+
+`write_s3`/`upload_s3` switch to a multipart upload when the body is larger
+than `multipart_threshold` (default 64 MiB): `POST ?uploads`, one
+`PUT ?partNumber=n&uploadId=` per part of `part_size` (default 16 MiB, at
+least 5 MiB, at most 10 000 parts), `POST ?uploadId=` with the part ETags,
+and `DELETE ?uploadId=` (abort) on any failure so nothing is left half
+uploaded. Parts are sent `parallel` at a time (default 4; R sends them one
+by one). Each part's ETag is compared with the MD5 of the part; the final
+ETag is compared with `md5(concat(part MD5s))-N`. Files are read part by
+part, never whole. Both knobs live in the client configuration
+(`S3PE_MULTIPART_THRESHOLD`, `S3PE_PART_SIZE` in bytes also work).
+
+## D16. Pre-signed URLs
+
+`presign_s3(key, expires = 3600, method = "GET")` returns a URL anyone can
+use for `expires` seconds (at most 7 days) without credentials. SigV4
+query-string signing: `X-Amz-Algorithm`, `X-Amz-Credential`, `X-Amz-Date`,
+`X-Amz-Expires`, `X-Amz-SignedHeaders=host` (+ `X-Amz-Security-Token`),
+payload `UNSIGNED-PAYLOAD`, then `X-Amz-Signature`. Methods `GET` and
+`PUT`. The AWS documentation example (GET `examplebucket/test.txt`,
+2013-05-24, 86400 s) must give the signature
+`aeeed9bbccd4d02ee5c0109b86d86835f995330da4c265957d157751f604d404`.
+
+## D17. Copy, batch delete, one-level listing, metadata
+
+- `copy_s3(from, to)`: server-side `CopyObject` (`x-amz-copy-source`,
+  signed like every `x-amz-*` header). Both sides may be `s3://` URLs.
+- `delete_s3` accepts several keys: `DeleteObjects` (`POST ?delete`, quiet,
+  `Content-MD5`), 1000 per request; any `<Error>` in the answer is raised
+  with its keys. One key still uses `DELETE`.
+- `list_s3(prefix, delimiter = "/")` lists one level: objects directly
+  under the prefix and the common prefixes ("folders"). Prefixes come back
+  as entries whose key ends with `/` and whose size, date and ETag are
+  missing (R: `NA`; Python: `None`; Rust/Go: a separate `prefixes` list).
+- `write_s3`/`upload_s3` take `metadata` (user metadata, sent as
+  `x-amz-meta-*`) and `headers` (any other header: `Cache-Control`,
+  `Content-Disposition`, `Content-Encoding`, `x-amz-storage-class`,
+  `x-amz-server-side-encryption`, `x-amz-server-side-encryption-aws-kms-key-id`,
+  …). `x-amz-*` headers are signed; the rest are not. `head_s3` returns the
+  user metadata. SSE is therefore available on stores that support it,
+  without a dedicated API.
+
+## D18. sync: a directory and a prefix, by ETag
+
+`sync_up_s3(dir, prefix, delete = FALSE, last = NULL)` uploads every file
+under `dir` whose remote ETag differs from its local MD5 (or multipart ETag,
+computed the same way as D15) or which is missing remotely; with `delete`
+it removes remote objects without a local file; `last` names the file to
+upload at the end, after everything else (a manifest: if it is there, the
+batch is complete). `sync_down_s3(prefix, dir, delete = FALSE)` is the
+mirror. Both return a report (uploaded/downloaded, skipped, deleted). The
+CLI: `s3pe sync DIR s3://bucket/prefix/` and `s3pe sync s3://bucket/prefix/ DIR`.
+
+## D19. Out of scope: ACLs and versioning
+
+ACLs are not implemented: Garage has none, and AWS defaults to "bucket
+owner enforced" (ACLs disabled) since 2023; access is managed with keys and
+policies, outside this client. Versioning is not implemented either
+(Garage does not version; on AWS it would need `versionId` on read, head
+and delete and a `list_versions`). Both can come back with a use case.

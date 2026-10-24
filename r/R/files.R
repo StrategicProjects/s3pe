@@ -58,6 +58,8 @@ download_s3 <- function(key, path, bucket = NULL, overwrite = FALSE,
 #'
 #' Streams a file to the store (two passes over the file: one to hash it,
 #' one to send it). The server's ETag is compared with the file's MD5.
+#' Files larger than the config's `multipart_threshold` (64 MiB by default)
+#' go up as a multipart upload, read part by part, aborted on any failure.
 #'
 #' @param path File to upload.
 #' @param key Object key, or an `s3://bucket/key` URL. `NULL`, `""` or a key
@@ -69,9 +71,11 @@ download_s3 <- function(key, path, bucket = NULL, overwrite = FALSE,
 #' @examplesIf interactive()
 #' upload_s3("output/panel.parquet", "etl/", bucket = "my-bucket")
 #' upload_s3("figure1.png", "s3://my-bucket/report/figure1.png")
+#' upload_s3("report.pdf", "public/", bucket = "my-bucket",
+#'           headers = c("Content-Disposition" = "inline"))
 #' @export
 upload_s3 <- function(path, key = NULL, bucket = NULL, content_type = NULL,
-                      config = s3_config()) {
+                      metadata = NULL, headers = NULL, config = s3_config()) {
   rlang::check_string(path)
   rlang::check_string(content_type, allow_null = TRUE)
   if (!file.exists(path) || dir.exists(path)) {
@@ -84,15 +88,11 @@ upload_s3 <- function(path, key = NULL, bucket = NULL, content_type = NULL,
   }
   content_type <- content_type %||% content_type_for(where$key)
   start <- Sys.time()
-  req <- s3_request(config, "PUT", where$bucket, where$key, body = s3_file(path),
-                    content_type = content_type)
-  hashes <- attr(req, "hashes")
-  resp <- s3_perform(req, config, "PUT", where$bucket, where$key)
-  etag <- resp_etag(resp)
-  check_upload(where$bucket, where$key, hashes$md5, etag)
-  s3_inform(c("v" = "{.emph \u2191} {.file {path}} \u2192 {.url {s3_url(where$bucket, where$key)}} ({format_size(hashes$size)}, {elapsed_since(start)} s)"))
+  put <- put_body(config, where$bucket, where$key, s3_file(path), content_type,
+                  metadata = metadata, headers = headers)
+  s3_inform(c("v" = "{.emph \u2191} {.file {path}} \u2192 {.url {s3_url(where$bucket, where$key)}} ({format_size(put$size)}, {elapsed_since(start)} s)"))
   invisible(tibble::tibble(
-    bucket = where$bucket, key = where$key, size = hashes$size,
-    etag = etag, elapsed = elapsed_since(start)
+    bucket = where$bucket, key = where$key, size = put$size,
+    etag = put$etag, elapsed = elapsed_since(start)
   ))
 }

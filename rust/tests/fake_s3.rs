@@ -1,10 +1,11 @@
 //! The client against a fake S3 server on localhost that checks every
-//! signature with the crate's own signer, stores objects in memory and can
-//! misbehave on demand (503s, 403s, wrong ETags).
+//! signature with the crate's own signer (header and query styles), stores
+//! objects and metadata in memory, supports multipart uploads, copies,
+//! batch deletes and one-level listings, and can misbehave on demand.
 
 use md5::{Digest, Md5};
-use s3pe::sigv4::{sign, Credentials, SignRequest};
-use s3pe::{Client, Error};
+use s3pe::sigv4::{presign, sign, Credentials, PresignRequest, SignRequest};
+use s3pe::{Client, Error, PutOptions, SyncOptions};
 use std::collections::BTreeMap;
 use std::io::{BufRead, BufReader, Read, Write};
 use std::net::{TcpListener, TcpStream};
@@ -15,11 +16,22 @@ const ACCESS: &str = "GKtest";
 const SECRET: &str = "secret-of-the-fake";
 const PAGE: usize = 2;
 
+#[derive(Clone)]
+struct Stored {
+    data: Vec<u8>,
+    content_type: String,
+    metadata: BTreeMap<String, String>,
+    etag: String,
+}
+
 #[derive(Default)]
 struct Store {
-    objects: BTreeMap<(String, String), (Vec<u8>, String)>,
+    objects: BTreeMap<(String, String), Stored>,
+    uploads: BTreeMap<String, BTreeMap<usize, Vec<u8>>>,
     requests: Vec<String>,
     fail_first: u32,
+    fail_part: Option<usize>,
+    next_upload: usize,
 }
 
 struct Fake {
@@ -62,6 +74,18 @@ fn start() -> Fake {
     }
 }
 
+fn creds() -> Credentials {
+    Credentials {
+        access_key: ACCESS.into(),
+        secret_key: SECRET.into(),
+        session_token: None,
+    }
+}
+
+fn md5hex(data: &[u8]) -> String {
+    hex::encode(Md5::digest(data))
+}
+
 fn handle(mut conn: TcpStream, store: Arc<Mutex<Store>>, host: &str) {
     let mut reader = BufReader::new(conn.try_clone().unwrap());
     let mut line = String::new();
@@ -102,35 +126,60 @@ fn handle(mut conn: TcpStream, store: Arc<Mutex<Store>>, host: &str) {
             (decode(k), decode(v))
         })
         .collect();
+    let q = |n: &str| query.iter().find(|(k, _)| k == n).map(|(_, v)| v.clone());
 
-    // Signature check: the request must carry exactly what our signer produces.
-    let payload_hash = hdr("x-amz-content-sha256");
-    assert_eq!(payload_hash, s3pe::sigv4::sha256_hex(&body), "payload hash");
+    // Signature check: header style, or query style for pre-signed URLs.
     assert_eq!(hdr("host"), host, "host header");
-    let expected = sign(
-        &SignRequest {
-            method: &method,
-            host,
-            path,
-            query: &query,
-            payload_hash: &payload_hash,
-            amz_date: &hdr("x-amz-date"),
-            extra_headers: &[],
-        },
-        &Credentials {
-            access_key: ACCESS.into(),
-            secret_key: SECRET.into(),
-            session_token: None,
-        },
-        "us-east-1",
-    );
-    let auth = expected
-        .iter()
-        .find(|(k, _)| k == "authorization")
-        .unwrap()
-        .1
-        .clone();
-    let ok = hdr("authorization") == auth;
+    let ok = if let Some(sig) = q("X-Amz-Signature") {
+        let plain: Vec<(String, String)> = query
+            .iter()
+            .filter(|(k, _)| !k.starts_with("X-Amz-"))
+            .cloned()
+            .collect();
+        let expected = presign(
+            &PresignRequest {
+                method: &method,
+                host,
+                path,
+                query: &plain,
+                amz_date: &q("X-Amz-Date").unwrap(),
+                expires: q("X-Amz-Expires").unwrap().parse().unwrap(),
+            },
+            &creds(),
+            "us-east-1",
+        );
+        expected.ends_with(&format!("X-Amz-Signature={sig}"))
+    } else {
+        let payload_hash = hdr("x-amz-content-sha256");
+        assert_eq!(payload_hash, s3pe::sigv4::sha256_hex(&body), "payload hash");
+        let extra: Vec<(String, String)> = headers
+            .iter()
+            .filter(|(k, _)| {
+                k.starts_with("x-amz-") && k != "x-amz-date" && k != "x-amz-content-sha256"
+            })
+            .cloned()
+            .collect();
+        let expected = sign(
+            &SignRequest {
+                method: &method,
+                host,
+                path,
+                query: &query,
+                payload_hash: &payload_hash,
+                amz_date: &hdr("x-amz-date"),
+                extra_headers: &extra,
+            },
+            &creds(),
+            "us-east-1",
+        );
+        let auth = expected
+            .iter()
+            .find(|(k, _)| k == "authorization")
+            .unwrap()
+            .1
+            .clone();
+        hdr("authorization") == auth
+    };
 
     let segs: Vec<String> = path
         .trim_start_matches('/')
@@ -143,54 +192,89 @@ fn handle(mut conn: TcpStream, store: Arc<Mutex<Store>>, host: &str) {
     let mut st = store.lock().unwrap();
     st.requests.push(format!("{method} {target}"));
 
-    let (status, resp_headers, resp_body): (u16, Vec<(String, String)>, Vec<u8>) = if !ok {
+    type Reply = (u16, Vec<(String, String)>, Vec<u8>);
+    let xml_ct = || vec![("content-type".to_string(), "application/xml".to_string())];
+    let error = |status: u16, code: &str, msg: &str| -> Reply {
         (
-            403,
+            status,
             vec![],
-            b"<Error><Code>SignatureDoesNotMatch</Code><Message>bad signature</Message></Error>"
-                .to_vec(),
+            format!("<Error><Code>{code}</Code><Message>{msg}</Message></Error>").into_bytes(),
         )
+    };
+
+    let (status, resp_headers, resp_body): Reply = if !ok {
+        error(403, "SignatureDoesNotMatch", "bad signature")
     } else if bucket == "forbidden" {
-        (
-            403,
-            vec![],
-            b"<Error><Code>AccessDenied</Code><Message>Access Denied</Message></Error>".to_vec(),
-        )
+        error(403, "AccessDenied", "Access Denied")
     } else if key.contains("flaky") && st.fail_first > 0 {
         st.fail_first -= 1;
-        (
-            503,
-            vec![],
-            b"<Error><Code>SlowDown</Code><Message>try later</Message></Error>".to_vec(),
-        )
+        error(503, "SlowDown", "try later")
     } else if bucket.is_empty() {
-        (200, vec![("content-type".into(), "application/xml".into())],
-         b"<ListAllMyBucketsResult><Buckets><Bucket><Name>test</Name><CreationDate>2026-01-01T00:00:00Z</CreationDate></Bucket></Buckets></ListAllMyBucketsResult>".to_vec())
+        (200, xml_ct(), b"<ListAllMyBucketsResult><Buckets><Bucket><Name>test</Name><CreationDate>2026-01-01T00:00:00Z</CreationDate></Bucket></Buckets></ListAllMyBucketsResult>".to_vec())
+    } else if method == "POST" && key.is_empty() && q("delete").is_some() {
+        // DeleteObjects: Content-MD5 must match
+        assert_eq!(
+            hdr("content-md5"),
+            s3pe::sigv4::base64(&Md5::digest(&body)),
+            "Content-MD5"
+        );
+        let text = String::from_utf8_lossy(&body).to_string();
+        let mut out = String::from("<DeleteResult>");
+        for k in text.split("<Key>").skip(1) {
+            let k = k
+                .split("</Key>")
+                .next()
+                .unwrap()
+                .replace("&amp;", "&")
+                .replace("&lt;", "<")
+                .replace("&gt;", ">");
+            if k == "undeletable" {
+                out.push_str("<Error><Key>undeletable</Key><Code>AccessDenied</Code><Message>nope</Message></Error>");
+            } else {
+                st.objects.remove(&(bucket.clone(), k));
+            }
+        }
+        out.push_str("</DeleteResult>");
+        (200, xml_ct(), out.into_bytes())
     } else if method == "GET" && key.is_empty() {
-        let prefix = query
-            .iter()
-            .find(|(k, _)| k == "prefix")
-            .map(|(_, v)| v.clone())
-            .unwrap_or_default();
-        let from: usize = query
-            .iter()
-            .find(|(k, _)| k == "continuation-token")
-            .map(|(_, v)| v.parse().unwrap())
+        let prefix = q("prefix").unwrap_or_default();
+        let delimiter = q("delimiter");
+        let from: usize = q("continuation-token")
+            .map(|v| v.parse().unwrap())
             .unwrap_or(0);
-        let all: Vec<_> = st
-            .objects
-            .iter()
-            .filter(|((b, k), _)| *b == bucket && k.starts_with(&prefix))
-            .collect();
-        let page: Vec<_> = all.iter().skip(from).take(PAGE).collect();
-        let truncated = from + PAGE < all.len();
+        let mut objects: Vec<(&String, &Stored)> = Vec::new();
+        let mut prefixes: Vec<String> = Vec::new();
+        for ((b, k), o) in st.objects.iter() {
+            if *b != bucket || !k.starts_with(&prefix) {
+                continue;
+            }
+            match &delimiter {
+                Some(d) if k[prefix.len()..].contains(d.as_str()) => {
+                    let rest = &k[prefix.len()..];
+                    let cp = format!("{prefix}{}{d}", rest.split(d.as_str()).next().unwrap());
+                    if !prefixes.contains(&cp) {
+                        prefixes.push(cp);
+                    }
+                }
+                _ => objects.push((k, o)),
+            }
+        }
+        let page: Vec<_> = objects.iter().skip(from).take(PAGE).collect();
+        let truncated = from + PAGE < objects.len();
         let mut xml =
             String::from("<ListBucketResult xmlns=\"http://s3.amazonaws.com/doc/2006-03-01/\">");
-        for ((_, k), (data, _)) in page.iter() {
+        for (k, o) in page.iter() {
             xml.push_str(&format!(
                 "<Contents><Key>{}</Key><Size>{}</Size><LastModified>2026-10-23T12:00:00.000Z</LastModified><ETag>\"{}\"</ETag></Contents>",
-                k.replace('&', "&amp;"), data.len(), hex::encode(Md5::digest(data))
+                k.replace('&', "&amp;"), o.data.len(), o.etag
             ));
+        }
+        if from == 0 {
+            for p in &prefixes {
+                xml.push_str(&format!(
+                    "<CommonPrefixes><Prefix>{p}</Prefix></CommonPrefixes>"
+                ));
+            }
         }
         xml.push_str(&format!("<IsTruncated>{truncated}</IsTruncated>"));
         if truncated {
@@ -200,37 +284,135 @@ fn handle(mut conn: TcpStream, store: Arc<Mutex<Store>>, host: &str) {
             ));
         }
         xml.push_str("</ListBucketResult>");
-        (
-            200,
-            vec![("content-type".into(), "application/xml".into())],
-            xml.into_bytes(),
-        )
+        (200, xml_ct(), xml.into_bytes())
+    } else if method == "POST" && q("uploads").is_some() {
+        st.next_upload += 1;
+        let id = format!("upload-{}", st.next_upload);
+        st.uploads.insert(id.clone(), BTreeMap::new());
+        // remember the content type and metadata of the initiate request on a placeholder
+        let meta: BTreeMap<String, String> = headers
+            .iter()
+            .filter_map(|(k, v)| {
+                k.strip_prefix("x-amz-meta-")
+                    .map(|m| (m.to_string(), v.clone()))
+            })
+            .collect();
+        st.objects.insert(
+            (bucket.clone(), format!("__init__/{id}")),
+            Stored {
+                data: vec![],
+                content_type: hdr("content-type"),
+                metadata: meta,
+                etag: String::new(),
+            },
+        );
+        (200, xml_ct(), format!("<InitiateMultipartUploadResult><UploadId>{id}</UploadId></InitiateMultipartUploadResult>").into_bytes())
+    } else if method == "PUT" && q("partNumber").is_some() {
+        let n: usize = q("partNumber").unwrap().parse().unwrap();
+        let id = q("uploadId").unwrap();
+        if st.fail_part == Some(n) {
+            error(500, "InternalError", "part refused")
+        } else if let Some(parts) = st.uploads.get_mut(&id) {
+            let etag = md5hex(&body);
+            parts.insert(n, body);
+            (200, vec![("etag".into(), format!("\"{etag}\""))], vec![])
+        } else {
+            error(404, "NoSuchUpload", "no such upload")
+        }
+    } else if method == "POST" && q("uploadId").is_some() {
+        let id = q("uploadId").unwrap();
+        match st.uploads.remove(&id) {
+            Some(parts) => {
+                let mut data = Vec::new();
+                let mut md5s = Vec::new();
+                for p in parts.values() {
+                    md5s.push(md5hex(p));
+                    data.extend_from_slice(p);
+                }
+                let etag = s3pe::multipart_etag(&md5s);
+                let init = st
+                    .objects
+                    .remove(&(bucket.clone(), format!("__init__/{id}")))
+                    .unwrap();
+                st.objects.insert(
+                    (bucket.clone(), key.clone()),
+                    Stored {
+                        data,
+                        content_type: init.content_type,
+                        metadata: init.metadata,
+                        etag: etag.clone(),
+                    },
+                );
+                (200, xml_ct(), format!("<CompleteMultipartUploadResult><ETag>\"{etag}\"</ETag></CompleteMultipartUploadResult>").into_bytes())
+            }
+            None => error(404, "NoSuchUpload", "no such upload"),
+        }
+    } else if method == "DELETE" && q("uploadId").is_some() {
+        let id = q("uploadId").unwrap();
+        st.uploads.remove(&id);
+        st.objects
+            .remove(&(bucket.clone(), format!("__init__/{id}")));
+        (204, vec![], vec![])
+    } else if method == "PUT" && !hdr("x-amz-copy-source").is_empty() {
+        let src = hdr("x-amz-copy-source");
+        let segs: Vec<String> = src
+            .trim_start_matches('/')
+            .splitn(2, '/')
+            .map(decode)
+            .collect();
+        match st.objects.get(&(segs[0].clone(), segs[1].clone())).cloned() {
+            Some(o) => {
+                let etag = o.etag.clone();
+                st.objects.insert((bucket.clone(), key.clone()), o);
+                (
+                    200,
+                    xml_ct(),
+                    format!("<CopyObjectResult><ETag>\"{etag}\"</ETag></CopyObjectResult>")
+                        .into_bytes(),
+                )
+            }
+            None => error(404, "NoSuchKey", "no source"),
+        }
     } else if method == "PUT" {
-        let ct = hdr("content-type");
         let etag = if key == "bad-etag" {
             "00000000000000000000000000000000".to_string()
         } else {
-            hex::encode(Md5::digest(&body))
+            md5hex(&body)
         };
-        st.objects.insert((bucket, key), (body, ct));
+        let metadata: BTreeMap<String, String> = headers
+            .iter()
+            .filter_map(|(k, v)| {
+                k.strip_prefix("x-amz-meta-")
+                    .map(|m| (m.to_string(), v.clone()))
+            })
+            .collect();
+        st.objects.insert(
+            (bucket, key),
+            Stored {
+                data: body,
+                content_type: hdr("content-type"),
+                metadata,
+                etag: etag.clone(),
+            },
+        );
         (200, vec![("etag".into(), format!("\"{etag}\""))], vec![])
     } else if method == "DELETE" {
         st.objects.remove(&(bucket, key));
         (204, vec![], vec![])
-    } else if let Some((data, ct)) = st.objects.get(&(bucket.clone(), key.clone())) {
+    } else if let Some(o) = st.objects.get(&(bucket.clone(), key.clone())) {
         let mut h = vec![
+            ("etag".to_string(), format!("\"{}\"", o.etag)),
+            ("content-type".to_string(), o.content_type.clone()),
             (
-                "etag".into(),
-                format!("\"{}\"", hex::encode(Md5::digest(data))),
-            ),
-            ("content-type".into(), ct.clone()),
-            (
-                "last-modified".into(),
-                "Thu, 23 Oct 2026 12:00:00 GMT".into(),
+                "last-modified".to_string(),
+                "Thu, 23 Oct 2026 12:00:00 GMT".to_string(),
             ),
         ];
+        for (k, v) in &o.metadata {
+            h.push((format!("x-amz-meta-{k}"), v.clone()));
+        }
         if method == "HEAD" {
-            h.push(("content-length".into(), data.len().to_string()));
+            h.push(("content-length".into(), o.data.len().to_string()));
         }
         (
             200,
@@ -238,17 +420,16 @@ fn handle(mut conn: TcpStream, store: Arc<Mutex<Store>>, host: &str) {
             if method == "HEAD" {
                 vec![]
             } else {
-                data.clone()
+                o.data.clone()
             },
         )
     } else {
-        (404, vec![], b"<Error><Code>NoSuchKey</Code><Message>The specified key does not exist.</Message></Error>".to_vec())
+        error(404, "NoSuchKey", "The specified key does not exist.")
     };
     drop(st);
 
     let mut out = format!("HTTP/1.1 {status} X\r\nconnection: close\r\n");
-    let has_len = resp_headers.iter().any(|(k, _)| k == "content-length");
-    if !has_len {
+    if !resp_headers.iter().any(|(k, _)| k == "content-length") {
         out.push_str(&format!("content-length: {}\r\n", resp_body.len()));
     }
     for (k, v) in resp_headers {
@@ -271,38 +452,45 @@ fn client(fake: &Fake) -> Client {
         .unwrap()
 }
 
+fn tmpdir(name: &str) -> std::path::PathBuf {
+    let dir = std::env::temp_dir().join(format!("s3pe-{name}-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).unwrap();
+    dir
+}
+
 #[test]
 fn round_trip_with_verified_signatures() {
     let fake = start();
     let s3 = client(&fake);
 
-    assert!(!s3.exists("dados/metadata.json").unwrap());
-    assert!(s3.head("dados/metadata.json").unwrap().is_none());
+    assert!(!s3.exists("data/manifest.json").unwrap());
+    assert!(s3.head("data/manifest.json").unwrap().is_none());
     assert!(matches!(
-        s3.read("dados/metadata.json"),
+        s3.read("data/manifest.json"),
         Err(Error::NotFound { .. })
     ));
 
     let t = s3
-        .write("dados/metadata.json", br#"{"ultimo_mes":202608}"#, None)
+        .write("data/manifest.json", br#"{"version":202608}"#, None)
         .unwrap();
-    assert_eq!(t.size, 21);
-    assert_eq!(t.url(), "s3://test/dados/metadata.json");
+    assert_eq!(t.size, 18);
+    assert_eq!(t.url(), "s3://test/data/manifest.json");
     assert_eq!(
-        s3.read("dados/metadata.json").unwrap(),
-        br#"{"ultimo_mes":202608}"#
+        s3.read("data/manifest.json").unwrap(),
+        br#"{"version":202608}"#
     );
-    assert_eq!(s3.read("s3://test/dados/metadata.json").unwrap().len(), 21);
+    assert_eq!(s3.read("s3://test/data/manifest.json").unwrap().len(), 18);
 
-    let h = s3.head("dados/metadata.json").unwrap().unwrap();
-    assert_eq!(h.size, 21);
+    let h = s3.head("data/manifest.json").unwrap().unwrap();
+    assert_eq!(h.size, 18);
     assert_eq!(h.content_type.as_deref(), Some("application/json"));
     assert_eq!(h.etag.len(), 32);
-    assert!(s3.exists("dados/metadata.json").unwrap());
+    assert!(s3.exists("data/manifest.json").unwrap());
 
-    s3.delete("dados/metadata.json").unwrap();
-    assert!(!s3.exists("dados/metadata.json").unwrap());
-    s3.delete("dados/metadata.json").unwrap(); // idempotent
+    s3.delete("data/manifest.json").unwrap();
+    assert!(!s3.exists("data/manifest.json").unwrap());
+    s3.delete("data/manifest.json").unwrap(); // idempotent
 }
 
 #[test]
@@ -318,28 +506,35 @@ fn keys_with_special_characters_round_trip() {
     assert_eq!(listed[0].size, 8);
     let stored = fake.store.lock().unwrap();
     assert_eq!(stored.objects.keys().next().unwrap().1, key);
-    assert_eq!(stored.objects.values().next().unwrap().1, "text/csv");
+    assert_eq!(
+        stored.objects.values().next().unwrap().content_type,
+        "text/csv"
+    );
 }
 
 #[test]
-fn listing_follows_continuation_tokens() {
+fn listing_follows_continuation_tokens_and_delimiters() {
     let fake = start();
     let s3 = client(&fake);
     for i in 0..5 {
         s3.write(&format!("p/{i}.txt"), format!("{i}"), None)
             .unwrap();
     }
+    s3.write("p/sub/a.txt", "a", None).unwrap();
+    s3.write("p/sub/deeper/b.txt", "b", None).unwrap();
     s3.write("q/other.txt", "x", None).unwrap();
     let all = s3.list("p/").unwrap();
-    assert_eq!(
-        all.iter().map(|o| o.key.as_str()).collect::<Vec<_>>(),
-        ["p/0.txt", "p/1.txt", "p/2.txt", "p/3.txt", "p/4.txt"]
-    );
-    assert_eq!(s3.list("").unwrap().len(), 6);
-    assert_eq!(s3.list("s3://test").unwrap().len(), 6);
+    assert_eq!(all.len(), 7);
+    assert_eq!(s3.list("").unwrap().len(), 8);
+    assert_eq!(s3.list("s3://test").unwrap().len(), 8);
     assert_eq!(s3.list("nothing/").unwrap().len(), 0);
-    let buckets = s3.buckets().unwrap();
-    assert_eq!(buckets[0].name, "test");
+    let dir = s3.list_dir("p/").unwrap();
+    assert_eq!(dir.objects.len(), 5);
+    assert_eq!(dir.prefixes, vec!["p/sub/"]);
+    let root = s3.list_dir("").unwrap();
+    assert_eq!(root.objects.len(), 0);
+    assert_eq!(root.prefixes, vec!["p/", "q/"]);
+    assert_eq!(s3.buckets().unwrap()[0].name, "test");
 }
 
 #[test]
@@ -379,22 +574,22 @@ fn upload_integrity_is_checked() {
 fn files_go_up_and_down() {
     let fake = start();
     let s3 = client(&fake);
-    let dir = std::env::temp_dir().join(format!("s3pe-test-{}", std::process::id()));
-    std::fs::create_dir_all(&dir).unwrap();
-    let src = dir.join("painel.parquet");
+    let dir = tmpdir("files");
+    let src = dir.join("sales.parquet");
     let big: Vec<u8> = (0..3_000_000u32).map(|i| (i % 251) as u8).collect();
     std::fs::write(&src, &big).unwrap();
 
     let t = s3.upload(&src, "etl/", None).unwrap();
-    assert_eq!(t.key, "etl/painel.parquet");
+    assert_eq!(t.key, "etl/sales.parquet");
     assert_eq!(t.size, big.len() as u64);
     assert_eq!(
-        fake.store.lock().unwrap().objects[&("test".into(), "etl/painel.parquet".into())].1,
+        fake.store.lock().unwrap().objects[&("test".into(), "etl/sales.parquet".into())]
+            .content_type,
         "application/vnd.apache.parquet"
     );
 
     let dest = dir.join("sub").join("copy.parquet");
-    let t = s3.download("etl/painel.parquet", &dest).unwrap();
+    let t = s3.download("etl/sales.parquet", &dest).unwrap();
     assert_eq!(t.size, big.len() as u64);
     assert_eq!(std::fs::read(&dest).unwrap(), big);
     assert!(!dir.join("sub").join("copy.parquet.s3pe-part").exists());
@@ -408,16 +603,264 @@ fn files_go_up_and_down() {
 }
 
 #[test]
-fn errors_without_credentials_or_bucket() {
-    let err = Client::builder()
-        .endpoint("http://127.0.0.1:1")
+fn multipart_upload_from_memory_and_file() {
+    let fake = start();
+    let s3 = Client::builder()
+        .endpoint(&fake.url)
+        .credentials(ACCESS, SECRET)
+        .bucket("test")
+        .multipart_threshold(1024 * 1024)
+        .part_size(5 * 1024 * 1024)
+        .parallel(3)
         .build()
-        .err();
-    // The environment of the test machine may carry credentials; only the
-    // message of a configuration error is asserted when it happens.
-    if let Some(e) = err {
-        assert!(matches!(e, Error::Config(_)));
+        .unwrap();
+    let big: Vec<u8> = (0..11 * 1024 * 1024 + 7u32)
+        .map(|i| (i % 253) as u8)
+        .collect();
+    let opts = PutOptions {
+        content_type: Some("application/x-test".into()),
+        metadata: vec![("origin".into(), "test".into())],
+        ..Default::default()
+    };
+    let t = s3.write_with("big/mem.bin", &big, &opts).unwrap();
+    assert_eq!(t.size, big.len() as u64);
+    assert!(t.etag.ends_with("-3"), "{}", t.etag);
+    {
+        let st = fake.store.lock().unwrap();
+        let o = &st.objects[&("test".into(), "big/mem.bin".into())];
+        assert_eq!(o.data, big);
+        assert_eq!(o.content_type, "application/x-test");
+        assert_eq!(o.metadata["origin"], "test");
+        assert!(st.uploads.is_empty());
+        assert_eq!(
+            st.requests
+                .iter()
+                .filter(|r| r.contains("partNumber"))
+                .count(),
+            3
+        );
     }
+    assert_eq!(s3.read("big/mem.bin").unwrap(), big);
+    let h = s3.head("big/mem.bin").unwrap().unwrap();
+    assert_eq!(h.metadata["origin"], "test");
+
+    let dir = tmpdir("multipart");
+    let f = dir.join("big.bin");
+    std::fs::write(&f, &big).unwrap();
+    let t = s3.upload(&f, "big/file.bin", None).unwrap();
+    assert!(t.etag.ends_with("-3"));
+    assert_eq!(
+        fake.store.lock().unwrap().objects[&("test".into(), "big/file.bin".into())].data,
+        big
+    );
+    assert_eq!(
+        s3pe::expected_etag(&f, 1024 * 1024, 5 * 1024 * 1024).unwrap(),
+        t.etag
+    );
+
+    // a failing part aborts the upload and leaves nothing behind
+    fake.store.lock().unwrap().fail_part = Some(2);
+    let s3_once = Client::builder()
+        .endpoint(&fake.url)
+        .credentials(ACCESS, SECRET)
+        .bucket("test")
+        .multipart_threshold(1024 * 1024)
+        .part_size(5 * 1024 * 1024)
+        .max_tries(1)
+        .build()
+        .unwrap();
+    let err = s3_once.write("big/fails.bin", &big, None).unwrap_err();
+    assert!(matches!(err, Error::Http { status: 500, .. }), "{err}");
+    let st = fake.store.lock().unwrap();
+    assert!(st.uploads.is_empty(), "upload aborted");
+    assert!(!st
+        .objects
+        .contains_key(&("test".into(), "big/fails.bin".into())));
+    assert!(st
+        .requests
+        .iter()
+        .any(|r| r.starts_with("DELETE") && r.contains("uploadId")));
+    std::fs::remove_dir_all(&dir).unwrap();
+}
+
+#[test]
+fn copy_batch_delete_metadata_and_headers() {
+    let fake = start();
+    let s3 = client(&fake);
+    let opts = PutOptions {
+        content_type: None,
+        metadata: vec![("Author".into(), "ana".into())],
+        headers: vec![
+            ("Cache-Control".into(), "max-age=60".into()),
+            ("x-amz-storage-class".into(), "STANDARD".into()),
+        ],
+    };
+    s3.write_with("a/one.txt", "1", &opts).unwrap();
+    let h = s3.head("a/one.txt").unwrap().unwrap();
+    assert_eq!(h.metadata.get("author").map(String::as_str), Some("ana"));
+
+    let t = s3.copy("a/one.txt", "s3://test/b/one-copy.txt").unwrap();
+    assert_eq!(t.key, "b/one-copy.txt");
+    assert_eq!(s3.read("b/one-copy.txt").unwrap(), b"1");
+    assert_eq!(
+        s3.head("b/one-copy.txt").unwrap().unwrap().metadata["author"],
+        "ana"
+    );
+    assert!(matches!(
+        s3.copy("a/missing", "b/x"),
+        Err(Error::NotFound { .. })
+    ));
+
+    for i in 0..5 {
+        s3.write(&format!("d/{i}.txt"), "x", None).unwrap();
+    }
+    s3.write("d/a&b.txt", "x", None).unwrap();
+    let keys: Vec<String> = s3
+        .list("d/")
+        .unwrap()
+        .into_iter()
+        .map(|o| format!("s3://test/{}", o.key))
+        .collect();
+    assert_eq!(keys.len(), 6);
+    s3.delete_many(&keys).unwrap();
+    assert_eq!(s3.list("d/").unwrap().len(), 0);
+    let n = fake
+        .store
+        .lock()
+        .unwrap()
+        .requests
+        .iter()
+        .filter(|r| r.contains("?delete"))
+        .count();
+    assert_eq!(n, 1, "one DeleteObjects request");
+
+    s3.write("undeletable", "x", None).unwrap();
+    let err = s3.delete_many(&["undeletable", "a/one.txt"]).unwrap_err();
+    assert!(
+        matches!(err, Error::Http { ref code, .. } if code == "DeleteErrors"),
+        "{err}"
+    );
+    assert!(!s3.exists("a/one.txt").unwrap());
+}
+
+#[test]
+fn presigned_urls_work_without_credentials() {
+    let fake = start();
+    let s3 = client(&fake);
+    s3.write("pub/report.pdf", b"%PDF", None).unwrap();
+    let url = s3
+        .presign("pub/report.pdf", "get", Duration::from_secs(600))
+        .unwrap();
+    assert!(
+        url.starts_with(&format!(
+            "{}/test/pub/report.pdf?X-Amz-Algorithm=AWS4-HMAC-SHA256&",
+            fake.url
+        )),
+        "{url}"
+    );
+    assert!(url.contains("X-Amz-Expires=600"));
+    let agent: ureq::Agent = ureq::Agent::config_builder()
+        .http_status_as_error(false)
+        .build()
+        .into();
+    let mut resp = agent.get(&url).call().unwrap();
+    assert_eq!(resp.status().as_u16(), 200);
+    assert_eq!(resp.body_mut().read_to_vec().unwrap(), b"%PDF");
+
+    let put = s3
+        .presign("pub/incoming.txt", "PUT", Duration::from_secs(60))
+        .unwrap();
+    let resp = agent
+        .put(&put)
+        .header("x-amz-content-sha256", s3pe::sigv4::sha256_hex(b"hello"))
+        .send(&b"hello"[..])
+        .unwrap();
+    assert_eq!(resp.status().as_u16(), 200);
+    assert_eq!(s3.read("pub/incoming.txt").unwrap(), b"hello");
+
+    let tampered = url.replace("report.pdf", "other.pdf");
+    assert_eq!(agent.get(&tampered).call().unwrap().status().as_u16(), 403);
+    assert!(matches!(
+        s3.presign("k", "DELETE", Duration::from_secs(1)),
+        Err(Error::Config(_))
+    ));
+}
+
+#[test]
+fn sync_up_and_down_by_etag() {
+    let fake = start();
+    let s3 = client(&fake);
+    let dir = tmpdir("sync-up");
+    std::fs::create_dir_all(dir.join("sub")).unwrap();
+    std::fs::write(dir.join("a.csv"), "a").unwrap();
+    std::fs::write(dir.join("sub/b.csv"), "b").unwrap();
+    std::fs::write(dir.join("manifest.json"), "{}").unwrap();
+
+    let opts = SyncOptions {
+        delete: true,
+        last: Some("manifest.json".into()),
+    };
+    let r = s3.sync_up(&dir, "s3://test/out", &opts).unwrap();
+    assert_eq!(
+        r.transferred,
+        vec!["a.csv", "sub/b.csv", "manifest.json"],
+        "manifest last"
+    );
+    assert!(r.skipped.is_empty() && r.deleted.is_empty());
+    assert_eq!(s3.list("out/").unwrap().len(), 3);
+
+    // nothing changed: nothing uploaded; one changed file and one stale remote object
+    let r = s3.sync_up(&dir, "out/", &opts).unwrap();
+    assert!(r.transferred.is_empty());
+    assert_eq!(r.skipped.len(), 3);
+    std::fs::write(dir.join("a.csv"), "a2").unwrap();
+    s3.write("out/stale.txt", "old", None).unwrap();
+    let r = s3.sync_up(&dir, "out/", &opts).unwrap();
+    assert_eq!(r.transferred, vec!["a.csv"]);
+    assert_eq!(r.deleted, vec!["stale.txt"]);
+    assert!(!s3.exists("out/stale.txt").unwrap());
+    assert!(matches!(
+        s3.sync_up(
+            &dir,
+            "out/",
+            &SyncOptions {
+                delete: false,
+                last: Some("nope".into())
+            }
+        ),
+        Err(Error::Config(_))
+    ));
+
+    let down = tmpdir("sync-down");
+    std::fs::write(down.join("extra.txt"), "x").unwrap();
+    let r = s3
+        .sync_down(
+            "out/",
+            &down,
+            &SyncOptions {
+                delete: true,
+                last: None,
+            },
+        )
+        .unwrap();
+    assert_eq!(r.transferred.len(), 3);
+    assert_eq!(r.deleted, vec!["extra.txt"]);
+    assert_eq!(
+        std::fs::read_to_string(down.join("sub/b.csv")).unwrap(),
+        "b"
+    );
+    assert_eq!(std::fs::read_to_string(down.join("a.csv")).unwrap(), "a2");
+    let r = s3
+        .sync_down("out/", &down, &SyncOptions::default())
+        .unwrap();
+    assert!(r.transferred.is_empty());
+    assert_eq!(r.skipped.len(), 3);
+    std::fs::remove_dir_all(&dir).unwrap();
+    std::fs::remove_dir_all(&down).unwrap();
+}
+
+#[test]
+fn errors_without_credentials_or_bucket() {
     let s3 = Client::builder()
         .endpoint("http://127.0.0.1:1")
         .credentials("a", "b")

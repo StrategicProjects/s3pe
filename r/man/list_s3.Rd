@@ -4,13 +4,19 @@
 \alias{list_s3}
 \title{List the objects under a prefix}
 \usage{
-list_s3(prefix = NULL, bucket = NULL, config = s3_config())
+list_s3(prefix = NULL, bucket = NULL, delimiter = NULL, config = s3_config())
 }
 \arguments{
 \item{prefix}{Key prefix, \code{""} or \code{NULL} for the whole bucket, or an
 \verb{s3://bucket/prefix} URL.}
 
 \item{bucket}{Bucket; defaults to the config's bucket.}
+
+\item{delimiter}{\code{NULL} lists every object under the prefix. \code{"/"} lists
+one level: the objects directly under the prefix and the common
+prefixes ("folders") below it, which come back as rows whose \code{key}
+ends with the delimiter and whose \code{size}, \code{last_modified} and \code{etag}
+are \code{NA}.}
 
 \item{config}{An \code{\link[=s3_config]{s3_config()}}.}
 }
@@ -28,5 +34,6 @@ it says what is there, and it is there only when everything else is.
 \dontshow{if (interactive()) withAutoprint(\{ # examplesIf}
 list_s3("data/", bucket = "my-bucket")
 list_s3("s3://my-bucket/series/")
+list_s3("series/", bucket = "my-bucket", delimiter = "/")   # one level
 \dontshow{\}) # examplesIf}
 }

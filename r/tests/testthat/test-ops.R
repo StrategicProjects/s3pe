@@ -25,9 +25,9 @@ test_that("a full round trip with verified signatures", {
   expect_equal(h$last_modified, as.POSIXct("2026-10-23 12:00:00", tz = "UTC"))
   expect_true(exists_s3("dados/metadata.json", config = cfg))
 
-  expect_true(delete_s3("dados/metadata.json", config = cfg))
+  expect_equal(delete_s3("dados/metadata.json", config = cfg), 1L)
   expect_false(exists_s3("dados/metadata.json", config = cfg))
-  expect_true(delete_s3("dados/metadata.json", config = cfg))
+  expect_equal(delete_s3("dados/metadata.json", config = cfg), 1L)
 })
 
 test_that("keys with special characters round-trip", {

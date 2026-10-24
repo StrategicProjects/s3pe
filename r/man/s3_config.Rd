@@ -12,7 +12,9 @@ s3_config(
   session_token = NULL,
   bucket = NULL,
   timeout = NULL,
-  max_tries = NULL
+  max_tries = NULL,
+  multipart_threshold = NULL,
+  part_size = NULL
 )
 }
 \arguments{
@@ -32,6 +34,11 @@ error when a request is made, not here.}
 \item{timeout}{Time limit of one call, in seconds.}
 
 \item{max_tries}{Attempts per call (the first one included).}
+
+\item{multipart_threshold}{Bodies larger than this many bytes are
+uploaded in parts (\code{\link[=write_s3]{write_s3()}}, \code{\link[=upload_s3]{upload_s3()}}).}
+
+\item{part_size}{Size of each part, in bytes (at least 5 MiB).}
 }
 \value{
 An object of class \code{s3pe_config}. Printing it never shows the
@@ -53,6 +60,8 @@ then from the default:
    \code{bucket} \tab \code{s3pe.bucket} \tab \code{S3PE_BUCKET} \tab none \cr
    \code{timeout} \tab \code{s3pe.timeout} \tab  \tab 300 s \cr
    \code{max_tries} \tab \code{s3pe.max_tries} \tab  \tab 3 \cr
+   \code{multipart_threshold} \tab \code{s3pe.multipart_threshold} \tab \code{S3PE_MULTIPART_THRESHOLD} \tab 64 MiB \cr
+   \code{part_size} \tab \code{s3pe.part_size} \tab \code{S3PE_PART_SIZE} \tab 16 MiB (at least 5 MiB) \cr
 }
 
 

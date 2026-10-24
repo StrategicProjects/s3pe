@@ -4,7 +4,7 @@
 use pyo3::create_exception;
 use pyo3::exceptions::PyException;
 use pyo3::prelude::*;
-use pyo3::types::{PyBytes, PyDict};
+use pyo3::types::{PyBytes, PyDict, PyList};
 use std::time::Duration;
 
 create_exception!(_s3pe, S3Error, PyException, "Base class of every s3pe error.");
@@ -42,6 +42,28 @@ fn object_dict<'py>(py: Python<'py>, o: &s3pe::Object) -> PyResult<Bound<'py, Py
     d.set_item("last_modified", &o.last_modified)?;
     d.set_item("etag", &o.etag)?;
     d.set_item("content_type", o.content_type.as_deref())?;
+    let m = PyDict::new(py);
+    for (k, v) in &o.metadata {
+        m.set_item(k, v)?;
+    }
+    d.set_item("metadata", m)?;
+    Ok(d)
+}
+
+fn put_options(content_type: Option<&str>, metadata: Option<Vec<(String, String)>>, headers: Option<Vec<(String, String)>>) -> s3pe::PutOptions {
+    s3pe::PutOptions {
+        content_type: content_type.map(str::to_string),
+        metadata: metadata.unwrap_or_default(),
+        headers: headers.unwrap_or_default(),
+    }
+}
+
+fn sync_dict<'py>(py: Python<'py>, r: &s3pe::SyncReport) -> PyResult<Bound<'py, PyDict>> {
+    let d = PyDict::new(py);
+    d.set_item("transferred", PyList::new(py, &r.transferred)?)?;
+    d.set_item("skipped", PyList::new(py, &r.skipped)?)?;
+    d.set_item("deleted", PyList::new(py, &r.deleted)?)?;
+    d.set_item("elapsed", r.elapsed.as_secs_f64())?;
     Ok(d)
 }
 
@@ -65,7 +87,7 @@ struct Client {
 #[pymethods]
 impl Client {
     #[new]
-    #[pyo3(signature = (endpoint=None, region=None, access_key=None, secret_key=None, session_token=None, bucket=None, timeout=None, max_tries=None))]
+    #[pyo3(signature = (endpoint=None, region=None, access_key=None, secret_key=None, session_token=None, bucket=None, timeout=None, max_tries=None, multipart_threshold=None, part_size=None, parallel=None))]
     #[allow(clippy::too_many_arguments)]
     fn new(
         py: Python<'_>,
@@ -77,6 +99,9 @@ impl Client {
         bucket: Option<String>,
         timeout: Option<f64>,
         max_tries: Option<u32>,
+        multipart_threshold: Option<u64>,
+        part_size: Option<u64>,
+        parallel: Option<usize>,
     ) -> PyResult<Self> {
         let mut b = s3pe::Client::builder();
         if let Some(v) = endpoint {
@@ -106,6 +131,15 @@ impl Client {
         if let Some(v) = max_tries {
             b = b.max_tries(v);
         }
+        if let Some(v) = multipart_threshold {
+            b = b.multipart_threshold(v);
+        }
+        if let Some(v) = part_size {
+            b = b.part_size(v);
+        }
+        if let Some(v) = parallel {
+            b = b.parallel(v);
+        }
         Ok(Client { inner: b.build().map_err(|e| to_py(py, e))? })
     }
 
@@ -133,16 +167,19 @@ impl Client {
     }
 
     /// Writes bytes; returns a dict with bucket, key, size, etag, elapsed.
-    #[pyo3(signature = (key, data, content_type=None))]
+    #[pyo3(signature = (key, data, content_type=None, metadata=None, headers=None))]
     fn write<'py>(
         &self,
         py: Python<'py>,
         key: &str,
         data: &[u8],
         content_type: Option<&str>,
+        metadata: Option<Vec<(String, String)>>,
+        headers: Option<Vec<(String, String)>>,
     ) -> PyResult<Bound<'py, PyDict>> {
+        let opts = put_options(content_type, metadata, headers);
         let t = py
-            .detach(|| self.inner.write(key, data, content_type))
+            .detach(|| self.inner.write_with(key, data, &opts))
             .map_err(|e| to_py(py, e))?;
         transfer_dict(py, &t)
     }
@@ -155,19 +192,65 @@ impl Client {
         transfer_dict(py, &t)
     }
 
-    /// Uploads a file (streaming).
-    #[pyo3(signature = (path, key, content_type=None))]
+    /// Uploads a file (streaming; multipart above the threshold).
+    #[pyo3(signature = (path, key, content_type=None, metadata=None, headers=None))]
     fn upload<'py>(
         &self,
         py: Python<'py>,
         path: &str,
         key: &str,
         content_type: Option<&str>,
+        metadata: Option<Vec<(String, String)>>,
+        headers: Option<Vec<(String, String)>>,
     ) -> PyResult<Bound<'py, PyDict>> {
+        let opts = put_options(content_type, metadata, headers);
         let t = py
-            .detach(|| self.inner.upload(path, key, content_type))
+            .detach(|| self.inner.upload_with(path, key, &opts))
             .map_err(|e| to_py(py, e))?;
         transfer_dict(py, &t)
+    }
+
+    /// One level: ``(objects, prefixes)``.
+    #[pyo3(signature = (prefix=""))]
+    fn list_dir<'py>(&self, py: Python<'py>, prefix: &str) -> PyResult<(Vec<Bound<'py, PyDict>>, Vec<String>)> {
+        let l = py.detach(|| self.inner.list_dir(prefix)).map_err(|e| to_py(py, e))?;
+        let objects: PyResult<Vec<_>> = l.objects.iter().map(|o| object_dict(py, o)).collect();
+        Ok((objects?, l.prefixes))
+    }
+
+    /// Server-side copy.
+    fn copy<'py>(&self, py: Python<'py>, from: &str, to: &str) -> PyResult<Bound<'py, PyDict>> {
+        let t = py.detach(|| self.inner.copy(from, to)).map_err(|e| to_py(py, e))?;
+        transfer_dict(py, &t)
+    }
+
+    /// Deletes several objects in batches of 1000.
+    fn delete_many(&self, py: Python<'_>, keys: Vec<String>) -> PyResult<()> {
+        py.detach(|| self.inner.delete_many(&keys)).map_err(|e| to_py(py, e))
+    }
+
+    /// A pre-signed URL (GET or PUT) valid for ``expires`` seconds.
+    #[pyo3(signature = (key, method="GET", expires=3600.0))]
+    fn presign(&self, py: Python<'_>, key: &str, method: &str, expires: f64) -> PyResult<String> {
+        self.inner
+            .presign(key, method, Duration::from_secs_f64(expires.max(1.0)))
+            .map_err(|e| to_py(py, e))
+    }
+
+    /// Uploads a directory to a prefix; returns the report dict.
+    #[pyo3(signature = (dir, prefix, delete=false, last=None))]
+    fn sync_up<'py>(&self, py: Python<'py>, dir: &str, prefix: &str, delete: bool, last: Option<String>) -> PyResult<Bound<'py, PyDict>> {
+        let opts = s3pe::SyncOptions { delete, last };
+        let r = py.detach(|| self.inner.sync_up(dir, prefix, &opts)).map_err(|e| to_py(py, e))?;
+        sync_dict(py, &r)
+    }
+
+    /// Downloads a prefix to a directory; returns the report dict.
+    #[pyo3(signature = (prefix, dir, delete=false))]
+    fn sync_down<'py>(&self, py: Python<'py>, prefix: &str, dir: &str, delete: bool) -> PyResult<Bound<'py, PyDict>> {
+        let opts = s3pe::SyncOptions { delete, last: None };
+        let r = py.detach(|| self.inner.sync_down(prefix, dir, &opts)).map_err(|e| to_py(py, e))?;
+        sync_dict(py, &r)
     }
 
     /// Every object under the prefix, as dicts (all pages).
@@ -222,6 +305,38 @@ fn format_size(n: u64) -> String {
     s3pe::format_size(n)
 }
 
+/// The ETag the store would give a local file: MD5, or the multipart ETag
+/// above ``threshold`` with parts of ``part_size``.
+#[pyfunction]
+fn expected_etag(path: &str, threshold: u64, part_size: u64) -> PyResult<String> {
+    s3pe::expected_etag(std::path::Path::new(path), threshold, part_size)
+        .map_err(|e| PyErr::new::<pyo3::exceptions::PyIOError, _>(e.to_string()))
+}
+
+/// The query string of a pre-signed URL (for tests): the X-Amz-* parameters and the signature.
+#[pyfunction]
+#[pyo3(signature = (method, host, path, query, amz_date, expires, access_key, secret_key, region, session_token=None))]
+#[allow(clippy::too_many_arguments)]
+fn presign_query(
+    method: &str,
+    host: &str,
+    path: &str,
+    query: Vec<(String, String)>,
+    amz_date: &str,
+    expires: u64,
+    access_key: String,
+    secret_key: String,
+    region: &str,
+    session_token: Option<String>,
+) -> String {
+    let creds = s3pe::sigv4::Credentials { access_key, secret_key, session_token };
+    s3pe::sigv4::presign(
+        &s3pe::sigv4::PresignRequest { method, host, path, query: &query, amz_date, expires },
+        &creds,
+        region,
+    )
+}
+
 /// Signs a request (for tests and for callers who build their own HTTP
 /// requests): returns the headers to add, as a dict.
 #[pyfunction]
@@ -267,6 +382,8 @@ fn _s3pe(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(content_type_for, m)?)?;
     m.add_function(wrap_pyfunction!(format_size, m)?)?;
     m.add_function(wrap_pyfunction!(sign, m)?)?;
+    m.add_function(wrap_pyfunction!(expected_etag, m)?)?;
+    m.add_function(wrap_pyfunction!(presign_query, m)?)?;
     m.add("S3Error", m.py().get_type::<S3Error>())?;
     m.add("ConfigError", m.py().get_type::<ConfigError>())?;
     m.add("TransportError", m.py().get_type::<TransportError>())?;

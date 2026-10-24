@@ -32,5 +32,5 @@ repository-code: "https://github.com/StrategicProjects/s3pe"
 url: "https://strategicprojects.github.io/s3pe/"
 license: MIT
 doi: 10.5281/zenodo.23606939
-version: 0.2.0
-date-released: 2026-10-23
+version: 0.3.0
+date-released: 2026-10-24

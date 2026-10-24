@@ -43,8 +43,15 @@ reference:
   - list_s3
   - head_s3
   - exists_s3
-  - delete_s3
   - buckets_s3
+- title: Copy, delete and sync
+  contents:
+  - copy_s3
+  - delete_s3
+  - sync_up_s3
+- title: Sharing
+  contents:
+  - presign_s3
 - title: Configuration
   contents:
   - s3_config

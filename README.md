@@ -69,8 +69,16 @@ s3pe put sales.parquet s3://my-bucket/reports/
 | `exists_s3` / `head_s3` | whether an object exists; its size, type, date and ETag |
 | `delete_s3` | delete (idempotent) |
 | `buckets_s3` | the buckets the credentials can see |
+| `copy_s3` | server-side copy |
+| `presign_s3` | a URL that works without credentials for a while (GET or PUT) |
+| `sync_up_s3` / `sync_down_s3` | mirror a directory and a prefix by ETag, a manifest last |
 
-Every edition also has a `Client` (R: `s3_config()`) for explicit settings.
+`write_s3`/`upload_s3` take `metadata` and `headers` (so SSE is one header
+away where the store supports it); `delete_s3` takes many keys at once;
+`list_s3(delimiter = "/")` lists one level. Files above 64 MiB go up as a
+multipart upload, parts in parallel, aborted cleanly on failure. No ACLs
+and no versioning, by design (DESIGN.md D19). Every edition also has a
+`Client` (R: `s3_config()`) for explicit settings.
 
 ## Architecture
 

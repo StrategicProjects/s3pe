@@ -33,7 +33,7 @@ def test_formats_and_special_keys(fake):
     key = "pasta/ação & x+y (1).txt"
     s3pe.write_s3("olá\n", key)
     assert s3pe.read_s3(key) == "olá\n"
-    assert fake.objects[("test", key)][1] == "text/plain"
+    assert fake.objects[("test", key)]["ct"] == "text/plain"
 
     s3pe.write_s3(b"\x00\x01", "bin/blob")
     assert s3pe.read_s3("bin/blob") == b"\x00\x01"
@@ -42,7 +42,7 @@ def test_formats_and_special_keys(fake):
     raw = s3pe.read_s3("x.json.gz", format="bytes")
     assert raw[:2] == b"\x1f\x8b"
     assert s3pe.read_s3("x.json.gz") == [1, 2, {"a": "é"}]
-    assert fake.objects[("test", "x.json.gz")][1] == "application/gzip"
+    assert fake.objects[("test", "x.json.gz")]["ct"] == "application/gzip"
 
     listed = s3pe.list_s3("pasta/")
     assert [o.key for o in listed] == [key]
@@ -94,7 +94,7 @@ def test_files(fake, tmp_path):
     src.write_bytes(big)
     t = s3pe.upload_s3(src, "etl/")
     assert t.key == "etl/painel.parquet" and t.size == len(big)
-    assert fake.objects[("test", "etl/painel.parquet")][1] == "application/vnd.apache.parquet"
+    assert fake.objects[("test", "etl/painel.parquet")]["ct"] == "application/vnd.apache.parquet"
     t = s3pe.upload_s3(src)
     assert t.key == "painel.parquet"
     s3pe.write_s3(src, "etl/again.parquet")
@@ -156,3 +156,89 @@ def test_tables(fake):
         return
     s3pe.write_s3(df, "series/icms.parquet")
     assert s3pe.read_s3("series/icms.parquet").equals(df)
+
+
+def test_multipart_copy_delete_many_list_dir_metadata(fake, tmp_path):
+    c = s3pe.Client(bucket="test", multipart_threshold=1024 * 1024, part_size=5 * 1024 * 1024, parallel=3)
+    big = bytes(i % 253 for i in range(11 * 1024 * 1024 + 7))
+    t = c.write(big, "big/mem.bin", metadata={"origin": "test"}, headers={"Cache-Control": "max-age=60"})
+    assert t.size == len(big) and t.etag.endswith("-3")
+    assert fake.objects[("test", "big/mem.bin")]["data"] == big
+    assert fake.objects[("test", "big/mem.bin")]["meta"] == {"origin": "test"}
+    assert sum("partNumber" in r for r in fake.requests) == 3
+    assert c.head("big/mem.bin").metadata == {"origin": "test"}
+    f = tmp_path / "big.bin"
+    f.write_bytes(big)
+    t = c.upload(f, "big/file.bin")
+    assert t.etag.endswith("-3") and fake.objects[("test", "big/file.bin")]["data"] == big
+    assert s3pe._s3pe.expected_etag(str(f), 1024 * 1024, 5 * 1024 * 1024) == t.etag
+
+    fake.fail_part = 2
+    once = s3pe.Client(bucket="test", multipart_threshold=1024 * 1024, part_size=5 * 1024 * 1024, max_tries=1)
+    with pytest.raises(s3pe.HttpError):
+        once.write(big, "big/fails.bin")
+    assert not fake.uploads and ("test", "big/fails.bin") not in fake.objects
+    fake.fail_part = None
+
+    c.write("1", "a/one.txt", metadata={"Author": "ana"})
+    t = c.copy("a/one.txt", "s3://test/b/one-copy.txt")
+    assert t.key == "b/one-copy.txt" and c.read("b/one-copy.txt") == "1"
+    assert c.head("b/one-copy.txt").metadata == {"author": "ana"}
+    with pytest.raises(s3pe.NotFoundError):
+        c.copy("a/missing", "b/x")
+
+    for i in range(5):
+        c.write("x", f"d/{i}.txt")
+    c.write("x", "d/sub/deep.txt")
+    one = c.list("d/", delimiter="/")
+    assert [o.key for o in one if o.is_prefix] == ["d/sub/"]
+    assert len([o for o in one if not o.is_prefix]) == 5
+    keys = [o.key for o in c.list("d/")]
+    assert len(keys) == 6
+    c.delete(keys)
+    assert c.list("d/") == []
+    assert sum("?delete" in r for r in fake.requests) == 1
+    c.write("x", "undeletable")
+    with pytest.raises(s3pe.HttpError) as e:
+        s3pe.delete_s3(["undeletable", "a/one.txt"], bucket="test")
+    assert e.value.code == "DeleteErrors"
+    assert not c.exists("a/one.txt")
+
+
+def test_presign_and_sync(fake, tmp_path):
+    import urllib.request
+
+    s3pe.write_s3(b"%PDF", "pub/report.pdf")
+    url = s3pe.presign_s3("pub/report.pdf", expires=600)
+    assert "X-Amz-Expires=600" in url and url.startswith(os.environ["S3PE_ENDPOINT"] + "/test/pub/report.pdf?")
+    with urllib.request.urlopen(url) as r:
+        assert r.read() == b"%PDF"
+    with pytest.raises(urllib.error.HTTPError) as e:
+        urllib.request.urlopen(url.replace("report.pdf", "other.pdf"))
+    assert e.value.code == 403
+    with pytest.raises(s3pe.ConfigError):
+        s3pe.presign_s3("k", method="DELETE")
+
+    d = tmp_path / "out"
+    (d / "sub").mkdir(parents=True)
+    (d / "a.csv").write_text("a")
+    (d / "sub" / "b.csv").write_text("b")
+    (d / "manifest.json").write_text("{}")
+    r = s3pe.sync_up_s3(d, "s3://test/out/", delete=True, last="manifest.json")
+    assert r.transferred == ["a.csv", "sub/b.csv", "manifest.json"]
+    r = s3pe.sync_up_s3(d, "out/", delete=True, last="manifest.json")
+    assert r.transferred == [] and len(r.skipped) == 3
+    (d / "a.csv").write_text("a2")
+    s3pe.write_s3("old", "out/stale.txt")
+    r = s3pe.sync_up_s3(d, "out/", delete=True)
+    assert r.transferred == ["a.csv"] and r.deleted == ["stale.txt"]
+    with pytest.raises(s3pe.ConfigError):
+        s3pe.sync_up_s3(d, "out/", last="nope")
+
+    down = tmp_path / "down"
+    down.mkdir()
+    (down / "extra.txt").write_text("x")
+    r = s3pe.sync_down_s3("out/", down, delete=True)
+    assert len(r.transferred) == 3 and r.deleted == ["extra.txt"]
+    assert (down / "sub" / "b.csv").read_text() == "b" and (down / "a.csv").read_text() == "a2"
+    assert len(s3pe.sync_down_s3("out/", down).skipped) == 3

@@ -1,6 +1,7 @@
 package s3pe
 
 import (
+	"strings"
 	"testing"
 	"time"
 )
@@ -31,6 +32,28 @@ func TestAWSDocumentationExample(t *testing.T) {
 		"Signature=f0e8bdb87c964420e857bd35b5d6ed310bd44f0170aba48dd91039c6036bdb41"
 	if auth != want {
 		t.Fatalf("authorization\n got %s\nwant %s", auth, want)
+	}
+}
+
+// The pre-signed URL example of the AWS documentation (DESIGN.md, D16).
+func TestAWSPresignedExample(t *testing.T) {
+	creds := credentials{
+		accessKey: "AKIAIOSFODNN7EXAMPLE",
+		secretKey: "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY",
+	}
+	qs := presign(presignRequest{
+		method:  "GET",
+		host:    "examplebucket.s3.amazonaws.com",
+		path:    "/test.txt",
+		amzDate: "20130524T000000Z",
+		expires: 86400,
+	}, creds, "us-east-1")
+	wantPrefix := "X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIAIOSFODNN7EXAMPLE%2F20130524%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20130524T000000Z&X-Amz-Expires=86400&X-Amz-SignedHeaders=host"
+	if !strings.HasPrefix(qs, wantPrefix) {
+		t.Fatalf("query\n got %s\nwant prefix %s", qs, wantPrefix)
+	}
+	if !strings.HasSuffix(qs, "&X-Amz-Signature=aeeed9bbccd4d02ee5c0109b86d86835f995330da4c265957d157751f604d404") {
+		t.Fatalf("signature: %s", qs)
 	}
 }
 

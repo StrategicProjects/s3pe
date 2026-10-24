@@ -82,7 +82,8 @@ EDITIONS = {
         verbs=[("read_s3", "GET into a <code>Vec&lt;u8&gt;</code>"), ("write_s3", "PUT bytes, content type guessed from the key"),
                ("download_s3", "GET to a file, streaming"), ("upload_s3", "PUT from a file, streaming, two passes"),
                ("list_s3", "every <code>Object</code> under a prefix, all pages"), ("exists_s3", "<code>bool</code>"),
-               ("head_s3", "<code>Option&lt;Object&gt;</code>: size, type, date, ETag"), ("delete_s3", "idempotent"), ("buckets_s3", "<code>Vec&lt;Bucket&gt;</code>")],
+               ("head_s3", "<code>Option&lt;Object&gt;</code>: size, type, date, ETag, metadata"), ("delete_s3", "idempotent; <code>delete_many_s3</code> for batches of 1000"), ("buckets_s3", "<code>Vec&lt;Bucket&gt;</code>"),
+               ("copy_s3", "server-side copy"), ("list_dir_s3", "one level: objects and prefixes"), ("presign_s3", "a GET or PUT URL without credentials, up to 7 days"), ("sync_up_s3 / sync_down_s3", "a directory and a prefix mirrored by ETag, a manifest last")],
         install_cmd="""<span class="c-prompt">$</span> <span class="c-cmd">cargo</span> add s3pe                    <span class="c-cmt"># library (+ CLI target)</span>
 <span class="c-prompt">$</span> <span class="c-cmd">cargo</span> add s3pe --no-default-features   <span class="c-cmt"># library only, no clap</span>
 <span class="c-prompt">$</span> <span class="c-cmd">cargo</span> install s3pe                <span class="c-cmt"># the s3pe command</span>""",
@@ -151,7 +152,8 @@ objects, err := s3pe.<span class="c-cmd">ListS3</span>(ctx, <span class="c-str">
         verbs=[("ReadS3", "GET into a <code>[]byte</code>"), ("WriteS3", "PUT bytes, content type guessed from the key"),
                ("DownloadS3", "GET to a file, streaming"), ("UploadS3", "PUT from a file, streaming, two passes"),
                ("ListS3", "every <code>Object</code> under a prefix, all pages"), ("ExistsS3", "<code>bool</code>"),
-               ("HeadS3", "<code>*Object</code> or nil: size, type, date, ETag"), ("DeleteS3", "idempotent"), ("BucketsS3", "<code>[]Bucket</code>")],
+               ("HeadS3", "<code>*Object</code> or nil: size, type, date, ETag, metadata"), ("DeleteS3", "idempotent; <code>DeleteManyS3</code> for batches of 1000"), ("BucketsS3", "<code>[]Bucket</code>"),
+               ("CopyS3", "server-side copy"), ("ListDirS3", "one level: objects and prefixes"), ("PresignS3", "a GET or PUT URL without credentials, up to 7 days"), ("SyncUpS3 / SyncDownS3", "a directory and a prefix mirrored by ETag, a manifest last")],
         install_cmd="""<span class="c-prompt">$</span> <span class="c-cmd">go</span> get github.com/StrategicProjects/s3pe""",
         panels=[("// an explicit client", """s3, err := s3pe.<span class="c-cmd">New</span>(s3pe.<span class="c-ty">Config</span>{
     Endpoint:  <span class="c-str">"http://127.0.0.1:9000"</span>,
@@ -217,7 +219,8 @@ s3pe.<span class="c-cmd">write_s3</span>(df, <span class="c-str">"s3://my-bucket
         verbs=[("read_s3", "GET, decoded by extension or <code>format=</code>"), ("write_s3", "PUT a DataFrame, dict, list, str, bytes, file-like or Path"),
                ("download_s3", "GET to a file, streaming; refuses to overwrite unless asked"), ("upload_s3", "PUT from a file, streaming"),
                ("list_s3", "every <code>S3Object</code> under a prefix, all pages"), ("exists_s3", "<code>bool</code>"),
-               ("head_s3", "<code>S3Object</code> or <code>None</code>: size, type, date, ETag"), ("delete_s3", "idempotent"), ("buckets_s3", "list of <code>Bucket</code>")],
+               ("head_s3", "<code>S3Object</code> or <code>None</code>: size, type, date, ETag, metadata"), ("delete_s3", "one key or a list (batches of 1000)"), ("buckets_s3", "list of <code>Bucket</code>"),
+               ("copy_s3", "server-side copy"), ("list_s3(delimiter=\"/\")", "one level: objects and prefixes (<code>is_prefix</code>)"), ("presign_s3", "a GET or PUT URL without credentials, up to 7 days"), ("sync_up_s3 / sync_down_s3", "a directory and a prefix mirrored by ETag, a manifest last")],
         install_cmd="""<span class="c-prompt">$</span> <span class="c-cmd">pip</span> install s3pe              <span class="c-cmt"># bytes, str, dict/list and files</span>
 <span class="c-prompt">$</span> <span class="c-cmd">pip</span> install <span class="c-str">"s3pe[pandas]"</span>     <span class="c-cmt"># also CSV, Parquet and Excel as DataFrames</span>""",
         panels=[("# an explicit client", """s3 = s3pe.<span class="c-ty">Client</span>(endpoint=<span class="c-str">"http://127.0.0.1:9000"</span>,
@@ -328,8 +331,8 @@ def page(key, e):
 
   <section id="verbs">
     <div class="wrap">
-      <h2>The nine verbs</h2>
-      <p class="sub">{e["verbs_note"]}</p>
+      <h2>The nine verbs, and four more</h2>
+      <p class="sub">{e["verbs_note"]} Files above 64 MiB go up as a multipart upload (parts in parallel, aborted cleanly on failure); <code>metadata</code> and <code>headers</code> ride along on writes. No ACLs and no versioning, by design.</p>
       <div class="scroll"><table class="cmp">
         <thead><tr><th>Verb</th><th>Does</th></tr></thead>
         <tbody>

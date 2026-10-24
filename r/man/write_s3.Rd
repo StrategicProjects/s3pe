@@ -11,6 +11,8 @@ write_s3(
   ...,
   format = NULL,
   content_type = NULL,
+  metadata = NULL,
+  headers = NULL,
   config = s3_config()
 )
 }
@@ -29,6 +31,14 @@ write_s3(
 extension.}
 
 \item{content_type}{Content type to store with the object.}
+
+\item{metadata}{Named character vector of user metadata, stored with the
+object as \verb{x-amz-meta-<name>} and returned by \code{\link[=head_s3]{head_s3()}}.}
+
+\item{headers}{Named character vector of extra headers to send with the
+upload: \code{Cache-Control}, \code{Content-Disposition}, \code{Content-Encoding},
+\code{x-amz-storage-class}, \code{x-amz-server-side-encryption}, ... (\verb{x-amz-*}
+headers are signed).}
 
 \item{config}{An \code{\link[=s3_config]{s3_config()}}.}
 }
@@ -56,12 +66,16 @@ uploads it:
 
 The content type is set from the extension unless \code{content_type} is
 given. After the upload the server's ETag is compared with the MD5 of
-what was sent.
+what was sent. Bodies larger than the config's \code{multipart_threshold}
+(64 MiB by default) go up as a multipart upload, part by part, aborted
+on any failure.
 }
 \examples{
 \dontshow{if (interactive()) withAutoprint(\{ # examplesIf}
 write_s3(mtcars, "report/mtcars.csv", bucket = "my-bucket")
 write_s3(list(generated_at = Sys.time()), "report/manifest.json", bucket = "my-bucket")
 write_s3(readBin("figure1.png", "raw", 1e7), "s3://my-bucket/report/figure1.png")
+write_s3(mtcars, "report/mtcars.csv", bucket = "my-bucket",
+         metadata = c(author = "ana"), headers = c("Cache-Control" = "max-age=3600"))
 \dontshow{\}) # examplesIf}
 }

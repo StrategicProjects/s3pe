@@ -144,22 +144,33 @@ file_extension <- function(key) {
 #'
 #' The content type is set from the extension unless `content_type` is
 #' given. After the upload the server's ETag is compared with the MD5 of
-#' what was sent.
+#' what was sent. Bodies larger than the config's `multipart_threshold`
+#' (64 MiB by default) go up as a multipart upload, part by part, aborted
+#' on any failure.
 #'
 #' @param x The object to write.
 #' @inheritParams read_s3
 #' @param ... Passed to the writer (for example `pretty = TRUE` for JSON,
 #'   `na = ""` for CSV).
 #' @param content_type Content type to store with the object.
+#' @param metadata Named character vector of user metadata, stored with the
+#'   object as `x-amz-meta-<name>` and returned by [head_s3()].
+#' @param headers Named character vector of extra headers to send with the
+#'   upload: `Cache-Control`, `Content-Disposition`, `Content-Encoding`,
+#'   `x-amz-storage-class`, `x-amz-server-side-encryption`, ... (`x-amz-*`
+#'   headers are signed).
 #' @returns Invisibly, a one-row tibble: `bucket`, `key`, `size` (bytes),
 #'   `etag`, `elapsed` (seconds).
 #' @examplesIf interactive()
 #' write_s3(mtcars, "report/mtcars.csv", bucket = "my-bucket")
 #' write_s3(list(generated_at = Sys.time()), "report/manifest.json", bucket = "my-bucket")
 #' write_s3(readBin("figure1.png", "raw", 1e7), "s3://my-bucket/report/figure1.png")
+#' write_s3(mtcars, "report/mtcars.csv", bucket = "my-bucket",
+#'          metadata = c(author = "ana"), headers = c("Cache-Control" = "max-age=3600"))
 #' @export
 write_s3 <- function(x, key, bucket = NULL, ..., format = NULL,
-                     content_type = NULL, config = s3_config()) {
+                     content_type = NULL, metadata = NULL, headers = NULL,
+                     config = s3_config()) {
   where <- resolve_key(key, bucket, config)
   rlang::check_string(content_type, allow_null = TRUE)
   format <- check_format(format) %||% detect_format(where$key)
@@ -174,21 +185,17 @@ write_s3 <- function(x, key, bucket = NULL, ..., format = NULL,
     )
   }
   body <- serialise(x, format, where$key, ...)
+  if (inherits(body, "s3pe_file")) {
+    on.exit(unlink(unclass(body)), add = TRUE)
+  }
   content_type <- content_type %||% content_type_for(where$key)
   start <- Sys.time()
-  req <- s3_request(config, "PUT", where$bucket, where$key, body = body,
-                    content_type = content_type)
-  hashes <- attr(req, "hashes")
-  resp <- s3_perform(req, config, "PUT", where$bucket, where$key)
-  etag <- resp_etag(resp)
-  check_upload(where$bucket, where$key, hashes$md5, etag)
-  if (inherits(body, "s3pe_file")) {
-    unlink(unclass(body))
-  }
-  s3_inform(c("v" = "{.emph \u2191} {.url {s3_url(where$bucket, where$key)}} ({format_size(hashes$size)}, {elapsed_since(start)} s)"))
+  put <- put_body(config, where$bucket, where$key, body, content_type,
+                  metadata = metadata, headers = headers)
+  s3_inform(c("v" = "{.emph \u2191} {.url {s3_url(where$bucket, where$key)}} ({format_size(put$size)}, {elapsed_since(start)} s)"))
   invisible(tibble::tibble(
-    bucket = where$bucket, key = where$key, size = hashes$size,
-    etag = etag, elapsed = elapsed_since(start)
+    bucket = where$bucket, key = where$key, size = put$size,
+    etag = put$etag, elapsed = elapsed_since(start)
   ))
 }
 

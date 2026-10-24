@@ -24,3 +24,12 @@ def test_aws_documentation_example_in_python_signer():
     rust = _s3pe.sign("GET", "examplebucket.s3.amazonaws.com", "/test.txt", [], EMPTY, "20130524T000000Z",
                       "AKIAIOSFODNN7EXAMPLE", "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY", "us-east-1")
     assert rust["authorization"] == sig
+
+
+def test_presign_vector_and_parity():
+    from fake_s3 import py_presign
+    args = ("GET", "examplebucket.s3.amazonaws.com", "/test.txt", [], "20130524T000000Z", 86400,
+            "AKIAIOSFODNN7EXAMPLE", "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY", "us-east-1")
+    qs = _s3pe.presign_query(*args)
+    assert qs.endswith("X-Amz-Signature=aeeed9bbccd4d02ee5c0109b86d86835f995330da4c265957d157751f604d404")
+    assert qs == py_presign(*args)

@@ -14,6 +14,8 @@
 #' | `bucket` | `s3pe.bucket` | `S3PE_BUCKET` | none |
 #' | `timeout` | `s3pe.timeout` | | 300 s |
 #' | `max_tries` | `s3pe.max_tries` | | 3 |
+#' | `multipart_threshold` | `s3pe.multipart_threshold` | `S3PE_MULTIPART_THRESHOLD` | 64 MiB |
+#' | `part_size` | `s3pe.part_size` | `S3PE_PART_SIZE` | 16 MiB (at least 5 MiB) |
 #'
 #' Keep credentials in `~/.Renviron` (R reads it at start-up), never in
 #' scripts. The endpoint has no default: set it once per machine
@@ -31,6 +33,9 @@
 #' @param bucket Bucket used when a key is not an `s3://bucket/key` URL.
 #' @param timeout Time limit of one call, in seconds.
 #' @param max_tries Attempts per call (the first one included).
+#' @param multipart_threshold Bodies larger than this many bytes are
+#'   uploaded in parts ([write_s3()], [upload_s3()]).
+#' @param part_size Size of each part, in bytes (at least 5 MiB).
 #' @returns An object of class `s3pe_config`. Printing it never shows the
 #'   secret key.
 #' @examplesIf interactive()
@@ -40,7 +45,8 @@
 #' @export
 s3_config <- function(endpoint = NULL, region = NULL, access_key = NULL,
                       secret_key = NULL, session_token = NULL, bucket = NULL,
-                      timeout = NULL, max_tries = NULL) {
+                      timeout = NULL, max_tries = NULL,
+                      multipart_threshold = NULL, part_size = NULL) {
   endpoint <- endpoint %||% getOption("s3pe.endpoint") %||%
     env_or_null("S3PE_ENDPOINT") %||% env_or_null("AWS_ENDPOINT_URL")
   region <- region %||% getOption("s3pe.region") %||%
@@ -52,9 +58,17 @@ s3_config <- function(endpoint = NULL, region = NULL, access_key = NULL,
   bucket <- bucket %||% getOption("s3pe.bucket") %||% env_or_null("S3PE_BUCKET")
   timeout <- timeout %||% getOption("s3pe.timeout") %||% 300
   max_tries <- max_tries %||% getOption("s3pe.max_tries") %||% 3
+  multipart_threshold <- multipart_threshold %||%
+    getOption("s3pe.multipart_threshold") %||%
+    env_number("S3PE_MULTIPART_THRESHOLD") %||% MULTIPART_THRESHOLD
+  part_size <- part_size %||% getOption("s3pe.part_size") %||%
+    env_number("S3PE_PART_SIZE") %||% PART_SIZE
 
   rlang::check_number_decimal(timeout, min = 0)
   rlang::check_number_whole(max_tries, min = 1)
+  rlang::check_number_decimal(multipart_threshold, min = 0)
+  rlang::check_number_decimal(part_size, min = 1)
+  part_size <- max(as.numeric(part_size), MIN_PART_SIZE)
   parsed <- if (is.null(endpoint)) list(endpoint = NULL, host = NULL) else parse_endpoint(endpoint)
 
   structure(
@@ -67,7 +81,9 @@ s3_config <- function(endpoint = NULL, region = NULL, access_key = NULL,
       session_token = session_token,
       bucket = bucket,
       timeout = as.numeric(timeout),
-      max_tries = as.integer(max_tries)
+      max_tries = as.integer(max_tries),
+      multipart_threshold = as.numeric(multipart_threshold),
+      part_size = part_size
     ),
     class = "s3pe_config"
   )
@@ -77,6 +93,20 @@ env_or_null <- function(name) {
   v <- Sys.getenv(name, unset = "")
   if (nzchar(trimws(v))) v else NULL
 }
+
+env_number <- function(name) {
+  v <- env_or_null(name)
+  if (is.null(v)) {
+    return(NULL)
+  }
+  n <- suppressWarnings(as.numeric(v))
+  if (is.na(n)) NULL else n
+}
+
+MULTIPART_THRESHOLD <- 64 * 1024^2
+PART_SIZE <- 16 * 1024^2
+MIN_PART_SIZE <- 5 * 1024^2
+MAX_PRESIGN_SECS <- 7 * 24 * 3600
 
 #' Split `scheme://host[:port]`, dropping a default port
 #' @noRd
@@ -107,11 +137,13 @@ print.s3pe_config <- function(x, ...) {
   key <- if (is.null(key)) "<unset>" else paste0(substr(key, 1, 4), "\u2026")
   cat("<s3pe_config>\n")
   cat(sprintf("  %-11s %s\n", c(
-    "endpoint:", "region:", "bucket:", "access_key:", "secret_key:", "timeout:", "max_tries:"
+    "endpoint:", "region:", "bucket:", "access_key:", "secret_key:", "timeout:", "max_tries:",
+    "multipart:"
   ), c(
     x$endpoint %||% "<unset>", x$region, x$bucket %||% "<none>", key,
     if (is.null(x$secret_key)) "<unset>" else "<set>",
-    paste(x$timeout, "s"), as.character(x$max_tries)
+    paste(x$timeout, "s"), as.character(x$max_tries),
+    sprintf("above %s, parts of %s", format_size(x$multipart_threshold), format_size(x$part_size))
   )), sep = "")
   invisible(x)
 }

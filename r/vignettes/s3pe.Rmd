@@ -128,6 +128,37 @@ delete_s3("report/draft.csv")
 buckets_s3()
 ```
 
+## Big files, sharing and sync
+
+Bodies above 64 MiB are uploaded in parts, with every part's ETag checked
+and the whole upload aborted on failure; `s3_config(multipart_threshold =,
+part_size =)` tune it. `metadata =` stores user metadata with the object
+(`head_s3()` returns it) and `headers =` sends any extra header.
+
+```{r}
+upload_s3("exports/full.parquet", "archive/", bucket = "my-bucket",
+          metadata = c(run = "2026-10-23"))
+```
+
+A pre-signed URL lets someone without credentials read (or write) one
+object for a while:
+
+```{r}
+presign_s3("reports/report.pdf", bucket = "my-bucket", expires = 3600)
+```
+
+`sync_up_s3()` and `sync_down_s3()` mirror a directory and a prefix,
+moving only what differs (size and ETag). `last` uploads a manifest after
+everything else, so readers who check the manifest first never see a
+half-published batch; `delete = TRUE` removes extras on the destination.
+
+```{r}
+sync_up_s3("output/", "reports/2026/", bucket = "my-bucket", last = "manifest.json")
+sync_down_s3("reports/2026/", "reports-2026/", bucket = "my-bucket")
+copy_s3("reports/2026/manifest.json", "reports/latest.json", bucket = "my-bucket")
+delete_s3(list_s3("tmp/", bucket = "my-bucket")$key, bucket = "my-bucket")
+```
+
 ## When things go wrong
 
 Every failure is an error with a class, so a pipeline stops by default

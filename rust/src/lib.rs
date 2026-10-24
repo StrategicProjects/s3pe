@@ -2,7 +2,9 @@
 //! Garage, MinIO, Ceph, …): nine verbs, SigV4 signing, retries and integrity
 //! checks, plus the `s3pe` command line.
 //!
-//! Nine verbs, one client, nothing else to learn:
+//! Nine verbs, one client, nothing else to learn (plus `copy_s3`,
+//! `delete_many_s3`, `list_dir_s3`, `presign_s3`, `sync_up_s3` and
+//! `sync_down_s3` since 0.3.0):
 //!
 //! ```no_run
 //! use s3pe::{read_s3, write_s3, list_s3};
@@ -58,6 +60,8 @@
 //!   and, when the ETag is an MD5, with the MD5 of what arrived.
 //! - Downloads to a file are written to a `.s3pe-part` file and renamed
 //!   when complete.
+//! - Bodies above 64 MiB go up as a multipart upload, 16 MiB parts, four
+//!   at a time, aborted on failure; the final ETag is checked too.
 //! - One line per transfer is logged through the [`log`] facade (target
 //!   `s3pe`): `↑ s3://bucket/key (12.3 MB, 0.8 s)`.
 //!
@@ -70,7 +74,10 @@
 //! s3pe get s3://my-bucket/data/manifest.json
 //! s3pe put sales.parquet s3://my-bucket/etl/
 //! s3pe cat s3://my-bucket/data/manifest.json | jq .version
-//! s3pe rm s3://my-bucket/etl/old.parquet
+//! s3pe rm s3://my-bucket/etl/old.parquet s3://my-bucket/etl/older.parquet
+//! s3pe cp s3://my-bucket/etl/sales.parquet s3://my-bucket/archive/sales-2026.parquet
+//! s3pe presign s3://my-bucket/reports/report.pdf --expires 3600
+//! s3pe sync ./out s3://my-bucket/reports/ --last manifest.json
 //! ```
 //!
 //! The same package exists for Python (`pip install s3pe`), R
@@ -85,8 +92,10 @@ pub mod sigv4;
 mod xml;
 
 pub use client::{
-    content_type_for, format_size, Bucket, Client, ClientBuilder, Object, Transfer,
-    DEFAULT_MAX_TRIES, DEFAULT_REGION, DEFAULT_TIMEOUT,
+    content_type_for, expected_etag, format_size, multipart_etag, Bucket, Client, ClientBuilder,
+    Listing, Object, PutOptions, SyncOptions, SyncReport, Transfer, DEFAULT_MAX_TRIES,
+    DEFAULT_MULTIPART_THRESHOLD, DEFAULT_PARALLEL, DEFAULT_PART_SIZE, DEFAULT_REGION,
+    DEFAULT_TIMEOUT, MAX_PRESIGN_SECS, MIN_PART_SIZE,
 };
 pub use error::{Error, Result};
 
@@ -139,4 +148,34 @@ pub fn head_s3(key: &str) -> Result<Option<Object>> {
 /// The buckets the credentials can see, with a client built from the environment.
 pub fn buckets_s3() -> Result<Vec<Bucket>> {
     Client::from_env()?.buckets()
+}
+
+/// Copies an object inside the store, with a client built from the environment.
+pub fn copy_s3(from: &str, to: &str) -> Result<Transfer> {
+    Client::from_env()?.copy(from, to)
+}
+
+/// Deletes several objects in batches, with a client built from the environment.
+pub fn delete_many_s3<S: AsRef<str>>(keys: &[S]) -> Result<()> {
+    Client::from_env()?.delete_many(keys)
+}
+
+/// One level of a prefix (objects and "folders"), with a client built from the environment.
+pub fn list_dir_s3(prefix: &str) -> Result<Listing> {
+    Client::from_env()?.list_dir(prefix)
+}
+
+/// A pre-signed URL, with a client built from the environment.
+pub fn presign_s3(key: &str, method: &str, expires: std::time::Duration) -> Result<String> {
+    Client::from_env()?.presign(key, method, expires)
+}
+
+/// Uploads a directory to a prefix, with a client built from the environment.
+pub fn sync_up_s3(dir: impl AsRef<Path>, prefix: &str, opts: &SyncOptions) -> Result<SyncReport> {
+    Client::from_env()?.sync_up(dir, prefix, opts)
+}
+
+/// Downloads a prefix to a directory, with a client built from the environment.
+pub fn sync_down_s3(prefix: &str, dir: impl AsRef<Path>, opts: &SyncOptions) -> Result<SyncReport> {
+    Client::from_env()?.sync_down(prefix, dir, opts)
 }

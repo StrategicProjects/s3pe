@@ -2,7 +2,8 @@
 
 Nine verbs over a Rust core: ``read_s3``, ``write_s3``, ``download_s3``,
 ``upload_s3``, ``list_s3``, ``delete_s3``, ``exists_s3``, ``head_s3`` and
-``buckets_s3``. Endpoint and credentials come from the environment
+``buckets_s3``, plus ``copy_s3``, ``presign_s3``, ``sync_up_s3`` and
+``sync_down_s3``. Bodies above 64 MiB go up as a multipart upload. Endpoint and credentials come from the environment
 (``S3PE_ENDPOINT``, ``AWS_ACCESS_KEY_ID``, ``AWS_SECRET_ACCESS_KEY``,
 ``S3PE_BUCKET``); a :class:`Client` takes them explicitly.
 
@@ -65,6 +66,11 @@ __all__ = [
     "exists_s3",
     "head_s3",
     "buckets_s3",
+    "copy_s3",
+    "presign_s3",
+    "sync_up_s3",
+    "sync_down_s3",
+    "SyncReport",
     "configure",
     "quiet",
     "content_type_for",
@@ -119,17 +125,42 @@ def _parse_time(s: str) -> Optional[datetime]:
 
 @dataclass(frozen=True)
 class S3Object:
-    """One object, as listed or described by the store."""
+    """One object, as listed or described by the store. In a one-level
+    listing (``delimiter="/"``) a common prefix ("folder") is an entry whose
+    key ends with ``/`` and whose size, date and ETag are ``None``."""
 
     key: str
-    size: int
+    size: Optional[int]
     last_modified: Optional[datetime]
-    etag: str
+    etag: Optional[str]
     content_type: Optional[str] = None
+    metadata: Optional[dict] = None
+
+    @property
+    def is_prefix(self) -> bool:
+        return self.size is None and self.key.endswith("/")
 
     @classmethod
     def _from(cls, d: dict) -> "S3Object":
-        return cls(d["key"], d["size"], _parse_time(d["last_modified"]), d["etag"], d.get("content_type"))
+        return cls(d["key"], d["size"], _parse_time(d["last_modified"]), d["etag"], d.get("content_type"), d.get("metadata") or {})
+
+    @classmethod
+    def _prefix(cls, p: str) -> "S3Object":
+        return cls(p, None, None, None, None, None)
+
+
+@dataclass(frozen=True)
+class SyncReport:
+    """What a sync did: relative paths transferred, skipped and deleted."""
+
+    transferred: list
+    skipped: list
+    deleted: list
+    elapsed: float
+
+    @classmethod
+    def _from(cls, d: dict) -> "SyncReport":
+        return cls(d["transferred"], d["skipped"], d["deleted"], d["elapsed"])
 
 
 @dataclass(frozen=True)
@@ -271,6 +302,10 @@ def _encode(obj: Any, key: str, fmt: Optional[str], kwargs: dict) -> bytes:
 # Client
 
 
+def _pairs(d: Optional[dict]) -> Optional[list]:
+    return None if d is None else [(str(k), str(v)) for k, v in d.items()]
+
+
 def _with_bucket(key: str, bucket: Optional[str]) -> str:
     if bucket and not key.startswith("s3://"):
         return f"s3://{bucket}/{key.lstrip('/')}"
@@ -284,7 +319,9 @@ class Client:
     (``S3PE_ENDPOINT``/``AWS_ENDPOINT_URL``, ``AWS_REGION``,
     ``AWS_ACCESS_KEY_ID``, ``AWS_SECRET_ACCESS_KEY``, ``AWS_SESSION_TOKEN``,
     ``S3PE_BUCKET``), then from the defaults (``us-east-1``, 300 s, 3
-    tries). The endpoint and the credentials are required. Keys are relative to ``bucket`` or full
+    tries; multipart above 64 MiB in 16 MiB parts, 4 at a time, via
+    ``S3PE_MULTIPART_THRESHOLD``, ``S3PE_PART_SIZE``, ``S3PE_PARALLEL``). The
+    endpoint and the credentials are required. Keys are relative to ``bucket`` or full
     ``s3://bucket/key`` URLs.
     """
 
@@ -298,6 +335,9 @@ class Client:
         bucket: Optional[str] = None,
         timeout: Optional[float] = None,
         max_tries: Optional[int] = None,
+        multipart_threshold: Optional[int] = None,
+        part_size: Optional[int] = None,
+        parallel: Optional[int] = None,
     ) -> None:
         self._inner = _s3pe.Client(
             endpoint=endpoint,
@@ -308,6 +348,9 @@ class Client:
             bucket=bucket,
             timeout=timeout,
             max_tries=max_tries,
+            multipart_threshold=multipart_threshold,
+            part_size=part_size,
+            parallel=parallel,
         )
 
     @property
@@ -345,13 +388,15 @@ class Client:
         to the reader (``pandas.read_csv``, ``json.loads``, ...)."""
         return _decode(self.read_bytes(key), key, format, kwargs)
 
-    def write(self, obj: Any, key: str, *, format: Optional[str] = None, content_type: Optional[str] = None, **kwargs: Any) -> Transfer:
+    def write(self, obj: Any, key: str, *, format: Optional[str] = None, content_type: Optional[str] = None, metadata: Optional[dict] = None, headers: Optional[dict] = None, **kwargs: Any) -> Transfer:
         """Writes ``obj`` (bytes, str, dict/list, DataFrame, file-like or
-        :class:`pathlib.Path`) to the object; ``kwargs`` go to the writer."""
+        :class:`pathlib.Path`) to the object; ``kwargs`` go to the writer.
+        ``metadata`` becomes ``x-amz-meta-*`` headers; ``headers`` are sent
+        as they are (``Cache-Control``, ``x-amz-server-side-encryption``, ...)."""
         if isinstance(obj, Path):
-            return self.upload(obj, key, content_type=content_type)
+            return self.upload(obj, key, content_type=content_type, metadata=metadata, headers=headers)
         data = _encode(obj, key, format, kwargs)
-        t = Transfer._from(self._inner.write(key, data, content_type))
+        t = Transfer._from(self._inner.write(key, data, content_type, _pairs(metadata), _pairs(headers)))
         log.info("↑ %s (%s, %.1f s)", t.url, format_size(t.size), t.elapsed)
         return t
 
@@ -368,30 +413,74 @@ class Client:
         log.info("↓ %s → %s (%s, %.1f s)", t.url, p, format_size(t.size), t.elapsed)
         return t
 
-    def upload(self, path: Union[str, os.PathLike], key: Optional[str] = None, *, content_type: Optional[str] = None) -> Transfer:
-        """Uploads a file (streaming). ``key`` ``None`` or ending in ``/``
-        gets the file's name appended."""
+    def upload(self, path: Union[str, os.PathLike], key: Optional[str] = None, *, content_type: Optional[str] = None, metadata: Optional[dict] = None, headers: Optional[dict] = None) -> Transfer:
+        """Uploads a file (streaming; multipart above the threshold). ``key``
+        ``None`` or ending in ``/`` gets the file's name appended."""
         p = Path(path)
         k = key if key is not None else p.name
-        t = Transfer._from(self._inner.upload(str(p), k, content_type))
+        t = Transfer._from(self._inner.upload(str(p), k, content_type, _pairs(metadata), _pairs(headers)))
         log.info("↑ %s → %s (%s, %.1f s)", p, t.url, format_size(t.size), t.elapsed)
         return t
 
-    def list(self, prefix: str = "") -> list:
-        """Every object under ``prefix`` (all pages), as :class:`S3Object`."""
+    def list(self, prefix: str = "", *, delimiter: Optional[str] = None) -> list:
+        """Every object under ``prefix`` (all pages), as :class:`S3Object`.
+        With ``delimiter="/"`` only one level: the objects directly under the
+        prefix plus the common prefixes, as entries with ``size None``."""
         import time
 
         t0 = time.perf_counter()
-        objects = [S3Object._from(d) for d in self._inner.list(prefix)]
+        if delimiter:
+            if delimiter != "/":
+                raise ValueError("only '/' is supported as delimiter")
+            objs, prefixes = self._inner.list_dir(prefix)
+            objects = [S3Object._prefix(p) for p in prefixes] + [S3Object._from(d) for d in objs]
+        else:
+            objects = [S3Object._from(d) for d in self._inner.list(prefix)]
         b, pre = self.resolve(prefix)
         n = len(objects)
         log.info("✔ %d object%s under s3://%s/%s (%.1f s)", n, "" if n == 1 else "s", b, pre, time.perf_counter() - t0)
         return objects
 
-    def delete(self, key: str) -> None:
-        """Deletes the object; deleting what does not exist is fine."""
+    def delete(self, key: Union[str, list, tuple]) -> None:
+        """Deletes one object (``DELETE``) or several (``DeleteObjects``, 1000
+        per request); deleting what does not exist is fine."""
+        if isinstance(key, (list, tuple)):
+            keys = [str(k) for k in key]
+            if not keys:
+                return
+            self._inner.delete_many(keys)
+            log.info("✖ %d objects", len(keys))
+            return
         self._inner.delete(key)
         log.info("✖ %s", self.url(key))
+
+    def copy(self, from_key: str, to_key: str) -> Transfer:
+        """Server-side copy of an object (metadata kept)."""
+        t = Transfer._from(self._inner.copy(from_key, to_key))
+        log.info("⧉ %s → %s (%s, %.1f s)", self.url(from_key), t.url, format_size(t.size), t.elapsed)
+        return t
+
+    def presign(self, key: str, *, method: str = "GET", expires: float = 3600) -> str:
+        """A URL that reads (or, with ``method="PUT"``, writes) the object
+        without credentials for ``expires`` seconds (at most seven days)."""
+        return self._inner.presign(key, method, float(expires))
+
+    def sync_up(self, dir: Union[str, os.PathLike], prefix: str, *, delete: bool = False, last: Optional[str] = None) -> SyncReport:
+        """Uploads every file under ``dir`` that is missing or differs (by
+        ETag) under ``prefix``; ``last`` names the file to upload at the end;
+        ``delete`` removes remote objects without a local file."""
+        r = SyncReport._from(self._inner.sync_up(str(dir), prefix, delete, last))
+        b, pre = self.resolve(prefix)
+        log.info("✔ sync %s → s3://%s/%s: %d uploaded, %d unchanged, %d deleted (%.1f s)", dir, b, pre, len(r.transferred), len(r.skipped), len(r.deleted), r.elapsed)
+        return r
+
+    def sync_down(self, prefix: str, dir: Union[str, os.PathLike], *, delete: bool = False) -> SyncReport:
+        """Downloads every object under ``prefix`` that is missing or differs
+        in ``dir``; ``delete`` removes local files that are not remote."""
+        r = SyncReport._from(self._inner.sync_down(prefix, str(dir), delete))
+        b, pre = self.resolve(prefix)
+        log.info("✔ sync s3://%s/%s → %s: %d downloaded, %d unchanged, %d deleted (%.1f s)", b, pre, dir, len(r.transferred), len(r.skipped), len(r.deleted), r.elapsed)
+        return r
 
     def exists(self, key: str) -> bool:
         """Whether the object exists."""
@@ -435,9 +524,9 @@ def read_s3(key: str, bucket: Optional[str] = None, *, format: Optional[str] = N
     return _client().read(_with_bucket(key, bucket), format=format, **kwargs)
 
 
-def write_s3(obj: Any, key: str, bucket: Optional[str] = None, *, format: Optional[str] = None, content_type: Optional[str] = None, **kwargs: Any) -> Transfer:
+def write_s3(obj: Any, key: str, bucket: Optional[str] = None, *, format: Optional[str] = None, content_type: Optional[str] = None, metadata: Optional[dict] = None, headers: Optional[dict] = None, **kwargs: Any) -> Transfer:
     """Encodes and writes an object (bytes, str, dict/list, DataFrame, Path)."""
-    return _client().write(obj, _with_bucket(key, bucket), format=format, content_type=content_type, **kwargs)
+    return _client().write(obj, _with_bucket(key, bucket), format=format, content_type=content_type, metadata=metadata, headers=headers, **kwargs)
 
 
 def download_s3(key: str, path: Union[str, os.PathLike], bucket: Optional[str] = None, *, overwrite: bool = False) -> Transfer:
@@ -445,20 +534,43 @@ def download_s3(key: str, path: Union[str, os.PathLike], bucket: Optional[str] =
     return _client().download(_with_bucket(key, bucket), path, overwrite=overwrite)
 
 
-def upload_s3(path: Union[str, os.PathLike], key: Optional[str] = None, bucket: Optional[str] = None, *, content_type: Optional[str] = None) -> Transfer:
-    """Uploads a file."""
+def upload_s3(path: Union[str, os.PathLike], key: Optional[str] = None, bucket: Optional[str] = None, *, content_type: Optional[str] = None, metadata: Optional[dict] = None, headers: Optional[dict] = None) -> Transfer:
+    """Uploads a file (multipart above the threshold)."""
     k = key if key is not None else Path(path).name
-    return _client().upload(path, _with_bucket(k, bucket), content_type=content_type)
+    return _client().upload(path, _with_bucket(k, bucket), content_type=content_type, metadata=metadata, headers=headers)
 
 
-def list_s3(prefix: str = "", bucket: Optional[str] = None) -> list:
-    """Every object under a prefix."""
-    return _client().list(_with_bucket(prefix, bucket))
+def list_s3(prefix: str = "", bucket: Optional[str] = None, *, delimiter: Optional[str] = None) -> list:
+    """Every object under a prefix; with ``delimiter="/"``, one level."""
+    return _client().list(_with_bucket(prefix, bucket), delimiter=delimiter)
 
 
-def delete_s3(key: str, bucket: Optional[str] = None) -> None:
-    """Deletes an object."""
-    _client().delete(_with_bucket(key, bucket))
+def delete_s3(key: Union[str, list, tuple], bucket: Optional[str] = None) -> None:
+    """Deletes one object or a list of objects."""
+    if isinstance(key, (list, tuple)):
+        _client().delete([_with_bucket(k, bucket) for k in key])
+    else:
+        _client().delete(_with_bucket(key, bucket))
+
+
+def copy_s3(from_key: str, to_key: str, bucket: Optional[str] = None) -> Transfer:
+    """Copies an object inside the store."""
+    return _client().copy(_with_bucket(from_key, bucket), _with_bucket(to_key, bucket))
+
+
+def presign_s3(key: str, bucket: Optional[str] = None, *, method: str = "GET", expires: float = 3600) -> str:
+    """A pre-signed URL for the object."""
+    return _client().presign(_with_bucket(key, bucket), method=method, expires=expires)
+
+
+def sync_up_s3(dir: Union[str, os.PathLike], prefix: str, bucket: Optional[str] = None, *, delete: bool = False, last: Optional[str] = None) -> SyncReport:
+    """Mirrors a directory to a prefix."""
+    return _client().sync_up(dir, _with_bucket(prefix, bucket), delete=delete, last=last)
+
+
+def sync_down_s3(prefix: str, dir: Union[str, os.PathLike], bucket: Optional[str] = None, *, delete: bool = False) -> SyncReport:
+    """Mirrors a prefix to a directory."""
+    return _client().sync_down(_with_bucket(prefix, bucket), dir, delete=delete)
 
 
 def exists_s3(key: str, bucket: Optional[str] = None) -> bool:

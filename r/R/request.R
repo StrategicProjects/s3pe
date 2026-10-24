@@ -10,11 +10,13 @@ TRANSIENT_STATUS <- c(429L, 500L, 502L, 503L, 504L)
 #' @param query Named list of raw query parameters.
 #' @param body `NULL`, a raw vector, or a file path (class `s3pe_file`).
 #' @param content_type Content type of the body, if any.
+#' @param headers Named character vector of extra headers. `x-amz-*`
+#'   headers are signed (D17); the others travel unsigned.
 #' @returns An `httr2_request`, with the payload hashes attached as the
 #'   attribute `hashes` (`sha256`, `md5`, `size`).
 #' @noRd
 s3_request <- function(config, method, bucket = "", key = "", query = list(),
-                       body = NULL, content_type = NULL,
+                       body = NULL, content_type = NULL, headers = NULL,
                        call = rlang::caller_env()) {
   check_config(config, call = call)
   path <- if (!nzchar(bucket)) {
@@ -31,24 +33,33 @@ s3_request <- function(config, method, bucket = "", key = "", query = list(),
   }
 
   hashes <- payload_hashes(body)
-  headers <- sigv4_sign(
+  extra <- as.character(headers %||% character())
+  names(extra) <- tolower(names(headers %||% character()))
+  signed_extra <- extra[startsWith(names(extra), "x-amz-")]
+  unsigned <- extra[!startsWith(names(extra), "x-amz-")]
+  if (is.null(body) && !is.null(content_type)) {
+    unsigned[["content-type"]] <- content_type
+  }
+  all_headers <- sigv4_sign(
     method = method, host = config$host, path = path, query = query,
     payload_hash = hashes$sha256, amz_date = amz_date(),
     access_key = config$access_key, secret_key = config$secret_key,
-    session_token = config$session_token, region = config$region
+    session_token = config$session_token, region = config$region,
+    extra_headers = signed_extra
   )
+  all_headers <- c(all_headers, as.list(unsigned))
 
   req <- httr2::request(url) |>
     httr2::req_method(method) |>
     httr2::req_user_agent("s3pe R package (https://github.com/StrategicProjects/s3pe)") |>
     httr2::req_timeout(config$timeout) |>
     httr2::req_error(is_error = function(resp) FALSE)
-  req <- rlang::inject(httr2::req_headers(req, !!!headers, .redact = "Authorization"))
+  req <- rlang::inject(httr2::req_headers(req, !!!all_headers, .redact = "Authorization"))
 
   if (is.raw(body)) {
-    req <- httr2::req_body_raw(req, body, type = content_type)
+    req <- httr2::req_body_raw(req, body, type = content_type %||% "application/octet-stream")
   } else if (inherits(body, "s3pe_file")) {
-    req <- httr2::req_body_file(req, unclass(body), type = content_type)
+    req <- httr2::req_body_file(req, unclass(body), type = content_type %||% "application/octet-stream")
   }
   attr(req, "hashes") <- hashes
   req
@@ -212,7 +223,7 @@ resp_content_length <- function(resp) {
   suppressWarnings(as.numeric(v))
 }
 
-#' Objects and continuation token of a ListObjectsV2 document
+#' Objects, common prefixes and continuation token of a ListObjectsV2 document
 #' @noRd
 parse_listing <- function(xml) {
   blocks <- xml_blocks(xml, "Contents")
@@ -222,9 +233,39 @@ parse_listing <- function(xml) {
     last_modified = parse_iso(vapply(blocks, xml_text, character(1), tag = "LastModified", USE.NAMES = FALSE)),
     etag = gsub("\"", "", vapply(blocks, xml_text, character(1), tag = "ETag", USE.NAMES = FALSE), fixed = TRUE)
   )
+  prefixes <- vapply(xml_blocks(xml, "CommonPrefixes"), xml_text, character(1),
+                     tag = "Prefix", USE.NAMES = FALSE)
   truncated <- xml_text(xml, "IsTruncated") == "true"
   token <- xml_text(xml, "NextContinuationToken")
-  list(objects = objects, next_token = if (truncated && nzchar(token)) token else NULL)
+  list(
+    objects = objects, prefixes = prefixes[nzchar(prefixes)],
+    next_token = if (truncated && nzchar(token)) token else NULL
+  )
+}
+
+#' Rows of a listing for common prefixes: key ends with the delimiter,
+#' the rest is missing
+#' @noRd
+prefix_rows <- function(prefixes) {
+  tibble::tibble(
+    key = prefixes, size = rep(NA_real_, length(prefixes)),
+    last_modified = as.POSIXct(rep(NA_real_, length(prefixes)), origin = "1970-01-01", tz = "UTC"),
+    etag = rep(NA_character_, length(prefixes))
+  )
+}
+
+#' An `<Error>` document in a 2xx body (copy, complete) is still an error
+#' @noRd
+check_body_error <- function(body, method, bucket, key, call) {
+  if (grepl("^\\s*(<\\?xml[^>]*>)?\\s*<Error[ >]", body)) {
+    cli::cli_abort(
+      c("{xml_text(body, 'Code')} for {method} {s3_url(bucket, key)}.",
+        "x" = xml_text(body, "Message")),
+      class = c("s3pe_error_http", "s3pe_error"),
+      bucket = bucket, key = key, code = xml_text(body, "Code"), call = call
+    )
+  }
+  invisible(body)
 }
 
 empty_listing <- function() {

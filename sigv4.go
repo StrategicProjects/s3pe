@@ -3,8 +3,9 @@ package s3pe
 // AWS Signature Version 4 for S3, header style. Signed headers are host,
 // x-amz-content-sha256, x-amz-date and, with a session token,
 // x-amz-security-token. The payload hash is always the real SHA-256 of the
-// body: never UNSIGNED-PAYLOAD, never aws-chunked (Garage 2.4 rejects the
-// chunked trailer).
+// body: never UNSIGNED-PAYLOAD, never aws-chunked (some stores, Garage among
+// them, reject the chunked trailer). Pre-signed URLs (presign) are the one
+// place UNSIGNED-PAYLOAD appears, as the protocol requires.
 
 import (
 	"crypto/hmac"
@@ -12,6 +13,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -162,4 +164,47 @@ func sign(req signRequest, creds credentials, region string) []pair {
 // amzDate formats a time as YYYYMMDDTHHMMSSZ (UTC).
 func amzDate(t time.Time) string {
 	return t.UTC().Format("20060102T150405Z")
+}
+
+// presignRequest is what a pre-signed URL needs (DESIGN.md D16).
+type presignRequest struct {
+	method  string // GET or PUT
+	host    string // Host header value (host[:port])
+	path    string // canonical, percent-encoded path
+	query   []pair // extra raw query parameters (usually none)
+	amzDate string // YYYYMMDDTHHMMSSZ
+	expires int64  // validity in seconds, 1 to 604800
+}
+
+// presign returns the query string (without the leading "?") of a
+// pre-signed URL: the X-Amz-* parameters plus the signature, computed over
+// UNSIGNED-PAYLOAD and the host header alone.
+func presign(req presignRequest, creds credentials, region string) string {
+	date := req.amzDate[:8]
+	scope := date + "/" + region + "/s3/aws4_request"
+	params := append([]pair(nil), req.query...)
+	params = append(params,
+		pair{"X-Amz-Algorithm", "AWS4-HMAC-SHA256"},
+		pair{"X-Amz-Credential", creds.accessKey + "/" + scope},
+		pair{"X-Amz-Date", req.amzDate},
+		pair{"X-Amz-Expires", strconv.FormatInt(req.expires, 10)},
+		pair{"X-Amz-SignedHeaders", "host"},
+	)
+	if creds.sessionToken != "" {
+		params = append(params, pair{"X-Amz-Security-Token", creds.sessionToken})
+	}
+	cq := canonicalQuery(params)
+	canonicalRequest := req.method + "\n" + req.path + "\n" + cq + "\nhost:" + req.host + "\n\nhost\nUNSIGNED-PAYLOAD"
+	stringToSign := strings.Join([]string{
+		"AWS4-HMAC-SHA256",
+		req.amzDate,
+		scope,
+		sha256Hex([]byte(canonicalRequest)),
+	}, "\n")
+	kDate := hmacSHA256([]byte("AWS4"+creds.secretKey), []byte(date))
+	kRegion := hmacSHA256(kDate, []byte(region))
+	kService := hmacSHA256(kRegion, []byte("s3"))
+	kSigning := hmacSHA256(kService, []byte("aws4_request"))
+	signature := hex.EncodeToString(hmacSHA256(kSigning, []byte(stringToSign)))
+	return cq + "&X-Amz-Signature=" + signature
 }

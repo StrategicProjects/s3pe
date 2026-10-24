@@ -126,3 +126,61 @@ sigv4_sign <- function(method, host, path, query = list(), payload_hash,
   )
   out
 }
+
+#' The query string of a pre-signed URL (without the leading `?`)
+#'
+#' SigV4 query-string signing: the `X-Amz-*` parameters plus the signature,
+#' over `UNSIGNED-PAYLOAD` and the `host` header alone (D16).
+#' @param expires Validity in seconds.
+#' @noRd
+sigv4_presign <- function(method, host, path, query = list(), amz_date, expires,
+                          access_key, secret_key, session_token = NULL,
+                          region = "us-east-1") {
+  date <- substr(amz_date, 1, 8)
+  scope <- paste(date, region, "s3", "aws4_request", sep = "/")
+  params <- c(query, list(
+    `X-Amz-Algorithm` = "AWS4-HMAC-SHA256",
+    `X-Amz-Credential` = paste0(access_key, "/", scope),
+    `X-Amz-Date` = amz_date,
+    `X-Amz-Expires` = as.character(expires),
+    `X-Amz-SignedHeaders` = "host"
+  ))
+  if (!is.null(session_token) && nzchar(session_token)) {
+    params$`X-Amz-Security-Token` <- session_token
+  }
+  cq <- canonical_query(params)
+  canonical_request <- paste(
+    method, path, cq, paste0("host:", host, "\n"), "host", "UNSIGNED-PAYLOAD",
+    sep = "\n"
+  )
+  string_to_sign <- paste(
+    "AWS4-HMAC-SHA256", amz_date, scope,
+    sha256_hex(charToRaw(canonical_request)),
+    sep = "\n"
+  )
+  k_date <- hmac_sha256(charToRaw(paste0("AWS4", secret_key)), date)
+  k_region <- hmac_sha256(k_date, region)
+  k_service <- hmac_sha256(k_region, "s3")
+  k_signing <- hmac_sha256(k_service, "aws4_request")
+  signature <- hash_hex(hmac_sha256(k_signing, string_to_sign))
+  paste0(cq, "&X-Amz-Signature=", signature)
+}
+
+#' Raw bytes of a hex string
+#' @noRd
+hex_to_raw <- function(hex) {
+  as.raw(strtoi(substring(hex, seq(1, nchar(hex) - 1, 2), seq(2, nchar(hex), 2)), 16L))
+}
+
+#' `md5(concat(part MD5 bytes))-N`: the ETag S3 gives a multipart upload
+#' @noRd
+multipart_etag <- function(part_md5s) {
+  all <- do.call(c, lapply(part_md5s, hex_to_raw))
+  paste0(hash_hex(openssl::md5(all)), "-", length(part_md5s))
+}
+
+#' `Content-MD5` of a body: base64 of its MD5
+#' @noRd
+content_md5 <- function(body) {
+  openssl::base64_encode(openssl::md5(body))
+}

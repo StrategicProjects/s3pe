@@ -15,11 +15,12 @@ head_s3(key, bucket = NULL, config = s3_config())
 }
 \value{
 A one-row tibble (\code{key}, \code{size}, \code{content_type},
-\code{last_modified}, \code{etag}), or \code{NULL} when the object does not exist.
+\code{last_modified}, \code{etag}, and \code{metadata}, a list column holding the
+named list of user metadata), or \code{NULL} when the object does not exist.
 }
 \description{
-A \code{HEAD} request: size, content type, modification time and ETag,
-without downloading the object.
+A \code{HEAD} request: size, content type, modification time, ETag and user
+metadata, without downloading the object.
 }
 \examples{
 \dontshow{if (interactive()) withAutoprint(\{ # examplesIf}

@@ -1,6 +1,6 @@
 [package]
 name = "s3pe"
-version = "0.2.0"
+version = "0.3.0"
 authors = [
     "André Leite <leite@castlab.org>",
     "Marcos Wasiliew <marcos.wasiliew@gmail.com>",

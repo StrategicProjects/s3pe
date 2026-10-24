@@ -39,6 +39,14 @@ list_s3("dados/")
 | `exists_s3` / `head_s3` | se o objeto existe; tamanho, tipo, data e ETag |
 | `delete_s3` | apaga (idempotente) |
 | `buckets_s3` | os buckets que a credencial enxerga |
+| `copy_s3` | cópia no servidor |
+| `presign_s3` | URL que funciona sem credencial por um tempo (GET ou PUT) |
+| `sync_up_s3` / `sync_down_s3` | espelha diretório e prefixo por ETag, manifesto por último |
+
+Arquivos acima de 64 MiB sobem em partes (multipart), em paralelo, com
+abort limpo em caso de falha; `write_s3`/`upload_s3` aceitam `metadata` e
+`headers`; `delete_s3` apaga vários de uma vez; `list_s3(delimiter = "/")`
+lista um nível. Sem ACLs e sem versionamento, por decisão (DESIGN.md D19).
 
 ## Configuração
 

@@ -159,6 +159,89 @@ pub fn sign(req: &SignRequest, creds: &Credentials, region: &str) -> Vec<(String
     out
 }
 
+/// What a pre-signed URL needs.
+pub struct PresignRequest<'a> {
+    /// `GET` or `PUT`.
+    pub method: &'a str,
+    /// Host header value (`host[:port]`).
+    pub host: &'a str,
+    /// Canonical, percent-encoded path.
+    pub path: &'a str,
+    /// Extra raw query parameters (usually none).
+    pub query: &'a [(String, String)],
+    /// Timestamp `YYYYMMDDTHHMMSSZ`.
+    pub amz_date: &'a str,
+    /// Validity in seconds (1 to 604800).
+    pub expires: u64,
+}
+
+/// The query string (without the leading `?`) of a pre-signed URL: the
+/// `X-Amz-*` parameters plus the signature, over `UNSIGNED-PAYLOAD` and the
+/// `host` header alone.
+pub fn presign(req: &PresignRequest, creds: &Credentials, region: &str) -> String {
+    let date = &req.amz_date[..8];
+    let scope = format!("{date}/{region}/s3/aws4_request");
+    let mut params: Vec<(String, String)> = req.query.to_vec();
+    params.push(("X-Amz-Algorithm".into(), "AWS4-HMAC-SHA256".into()));
+    params.push((
+        "X-Amz-Credential".into(),
+        format!("{}/{scope}", creds.access_key),
+    ));
+    params.push(("X-Amz-Date".into(), req.amz_date.to_string()));
+    params.push(("X-Amz-Expires".into(), req.expires.to_string()));
+    params.push(("X-Amz-SignedHeaders".into(), "host".into()));
+    if let Some(token) = &creds.session_token {
+        params.push(("X-Amz-Security-Token".into(), token.clone()));
+    }
+    let canonical_query = canonical_query(&params);
+    let canonical_request = format!(
+        "{}\n{}\n{}\nhost:{}\n\nhost\nUNSIGNED-PAYLOAD",
+        req.method, req.path, canonical_query, req.host
+    );
+    let string_to_sign = format!(
+        "AWS4-HMAC-SHA256\n{}\n{}\n{}",
+        req.amz_date,
+        scope,
+        sha256_hex(canonical_request.as_bytes())
+    );
+    let k_date = hmac(
+        format!("AWS4{}", creds.secret_key).as_bytes(),
+        date.as_bytes(),
+    );
+    let k_region = hmac(&k_date, region.as_bytes());
+    let k_service = hmac(&k_region, b"s3");
+    let k_signing = hmac(&k_service, b"aws4_request");
+    let signature = hex::encode(hmac(&k_signing, string_to_sign.as_bytes()));
+    format!("{canonical_query}&X-Amz-Signature={signature}")
+}
+
+/// Base64 (standard alphabet, padded), for `Content-MD5`.
+pub fn base64(data: &[u8]) -> String {
+    const T: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+    let mut out = String::with_capacity(data.len().div_ceil(3) * 4);
+    for chunk in data.chunks(3) {
+        let b = [
+            chunk[0],
+            *chunk.get(1).unwrap_or(&0),
+            *chunk.get(2).unwrap_or(&0),
+        ];
+        let n = (b[0] as u32) << 16 | (b[1] as u32) << 8 | b[2] as u32;
+        out.push(T[(n >> 18) as usize & 63] as char);
+        out.push(T[(n >> 12) as usize & 63] as char);
+        out.push(if chunk.len() > 1 {
+            T[(n >> 6) as usize & 63] as char
+        } else {
+            '='
+        });
+        out.push(if chunk.len() > 2 {
+            T[n as usize & 63] as char
+        } else {
+            '='
+        });
+    }
+    out
+}
+
 /// Current UTC time as `YYYYMMDDTHHMMSSZ`.
 pub fn amz_date_now() -> String {
     let secs = SystemTime::now()
@@ -230,6 +313,43 @@ mod tests {
              SignedHeaders=host;range;x-amz-content-sha256;x-amz-date, \
              Signature=f0e8bdb87c964420e857bd35b5d6ed310bd44f0170aba48dd91039c6036bdb41"
         );
+    }
+
+    /// The pre-signed URL example of the AWS documentation (D16).
+    #[test]
+    fn aws_presigned_example() {
+        let creds = Credentials {
+            access_key: "AKIAIOSFODNN7EXAMPLE".into(),
+            secret_key: "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY".into(),
+            session_token: None,
+        };
+        let qs = presign(
+            &PresignRequest {
+                method: "GET",
+                host: "examplebucket.s3.amazonaws.com",
+                path: "/test.txt",
+                query: &[],
+                amz_date: "20130524T000000Z",
+                expires: 86400,
+            },
+            &creds,
+            "us-east-1",
+        );
+        assert!(
+            qs.ends_with(
+                "X-Amz-Signature=aeeed9bbccd4d02ee5c0109b86d86835f995330da4c265957d157751f604d404"
+            ),
+            "{qs}"
+        );
+        assert!(qs.starts_with("X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIAIOSFODNN7EXAMPLE%2F20130524%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20130524T000000Z&X-Amz-Expires=86400&X-Amz-SignedHeaders=host"));
+    }
+
+    #[test]
+    fn base64_matches_the_standard() {
+        assert_eq!(base64(b""), "");
+        assert_eq!(base64(b"f"), "Zg==");
+        assert_eq!(base64(b"fo"), "Zm8=");
+        assert_eq!(base64(b"foobar"), "Zm9vYmFy");
     }
 
     #[test]
