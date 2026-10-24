@@ -11,6 +11,7 @@
       .store { fill: #e6f7f3; stroke: #29c7ac; stroke-width: 2; rx: 14; }
       .t { fill: #10192e; font-weight: 700; font-size: 16px; }
       .s { fill: #56648a; font-size: 13px; }
+      .p { fill: #56648a; font-size: 12px; }
       .k { fill: #1f8fff; font-weight: 700; font-size: 12px; letter-spacing: .08em; }
       .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12.5px; fill: #10192e; }
       .line { stroke: #56648a; stroke-width: 1.6; fill: none; marker-end: url(#arrow); }
@@ -29,7 +30,7 @@
     <text class="k" x="271" y="54">PYTHON · PyPI</text>
     <text class="t" x="271" y="78">s3pe</text>
     <text class="s" x="271" y="100">PyO3 binding on the crate</text>
-    <text class="s" x="271" y="120">DataFrames, dicts by extension</text>
+    <text class="s" x="271" y="120">DataFrames and dicts by extension</text>
 
     <rect class="box" x="490" y="30" width="215" height="110"/>
     <text class="k" x="506" y="54">RUST · crates.io</text>
@@ -46,7 +47,6 @@
 
   <!-- python -> rust binding -->
   <path class="line" d="M470,85 L488,85"/>
-  <text class="s" x="440" y="160" text-anchor="middle" font-size="12">Python calls the Rust crate; the GIL is released during transfers</text>
 
   <!-- arrows down -->
   <path class="line" d="M127,140 L127,188"/>
@@ -62,16 +62,16 @@
     <text x="36" y="266">read_s3 · write_s3 · download_s3 · upload_s3 · list_s3 · delete_s3 · exists_s3 · head_s3 · buckets_s3</text>
   </g>
   <g>
-    <rect x="36" y="280" width="150" height="26" rx="13" fill="#ffffff" stroke="#c3cde6"/>
-    <text class="s" x="111" y="297" text-anchor="middle">resolve s3://bucket/key</text>
-    <rect x="196" y="280" width="140" height="26" rx="13" fill="#ffffff" stroke="#c3cde6"/>
-    <text class="s" x="266" y="297" text-anchor="middle">SigV4 over SHA-256</text>
-    <rect x="346" y="280" width="170" height="26" rx="13" fill="#ffffff" stroke="#c3cde6"/>
-    <text class="s" x="431" y="297" text-anchor="middle">retry 429/5xx: 1 s, 2 s</text>
-    <rect x="526" y="280" width="214" height="26" rx="13" fill="#ffffff" stroke="#c3cde6"/>
-    <text class="s" x="633" y="297" text-anchor="middle">verify ETag/MD5, Content-Length</text>
-    <rect x="750" y="280" width="172" height="26" rx="13" fill="#ffffff" stroke="#c3cde6"/>
-    <text class="s" x="836" y="297" text-anchor="middle">one log line, typed errors</text>
+    <rect x="36" y="280" width="160" height="26" rx="13" fill="#ffffff" stroke="#c3cde6"/>
+    <text class="p" x="116" y="297" text-anchor="middle">resolve s3://bucket/key</text>
+    <rect x="206" y="280" width="150" height="26" rx="13" fill="#ffffff" stroke="#c3cde6"/>
+    <text class="p" x="281" y="297" text-anchor="middle">SigV4 over SHA-256</text>
+    <rect x="366" y="280" width="166" height="26" rx="13" fill="#ffffff" stroke="#c3cde6"/>
+    <text class="p" x="449" y="297" text-anchor="middle">retry 429/5xx: 1 s, 2 s</text>
+    <rect x="542" y="280" width="206" height="26" rx="13" fill="#ffffff" stroke="#c3cde6"/>
+    <text class="p" x="645" y="297" text-anchor="middle">verify ETag/MD5, Content-Length</text>
+    <rect x="758" y="280" width="166" height="26" rx="13" fill="#ffffff" stroke="#c3cde6"/>
+    <text class="p" x="841" y="297" text-anchor="middle">one log line, typed errors</text>
   </g>
 
   <path class="line" d="M480,320 L480,360"/>
@@ -80,5 +80,5 @@
   <rect class="store" x="20" y="362" width="920" height="88"/>
   <text class="k" x="36" y="386" fill="#1a9c86">OBJECT STORE</text>
   <text class="t" x="36" y="410">s3.pe.gov.br · Garage · path-style · no anonymous access</text>
-  <text class="s" x="36" y="434">buckets per project (iaempe, horizonte-fiscal, …) · inside the server: http://127.0.0.1:9003 · or any S3-style store</text>
+  <text class="s" x="36" y="434">one bucket and one key per project (iaempe, horizonte-fiscal, …) · inside the server: http://127.0.0.1:9003 · or any S3 store</text>
 </svg>
