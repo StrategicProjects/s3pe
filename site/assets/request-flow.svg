@@ -2,8 +2,8 @@
   <title>What happens in every s3pe call</title>
   <desc>Six steps from left to right: resolve the key (s3://bucket/key, or bucket plus key, or the default bucket); hash the payload (SHA-256 for the signature, MD5 for the check); sign with AWS Signature V4 over host, x-amz-date and x-amz-content-sha256; send a PUT, GET, HEAD or DELETE with Content-Length, path-style; retry on connection failure or HTTP 429 and 5xx after 1 s and 2 s, never on other 4xx; verify the ETag against the MD5 and the Content-Length, then print one log line. Below, the typed errors: 404 not found, 403 access denied, other HTTP with the S3 code, transport, configuration, integrity.</desc>
   <defs>
-    <marker id="arrow2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
-      <path d="M0,0 L10,5 L0,10 z" fill="#56648a"/>
+    <marker id="arrow2" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse">
+      <path d="M0,1.5 L10,5 L0,8.5 z" fill="#56648a"/>
     </marker>
     <style>
       .step { fill: #ffffff; stroke: #c3cde6; stroke-width: 1.5; rx: 12; }

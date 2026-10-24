@@ -2,8 +2,8 @@
   <title>s3pe architecture: four editions, one specification, one object store</title>
   <desc>Four boxes on top (R package on httr2 and openssl; Python package as a PyO3 binding on the Rust crate; Rust crate on ureq and rustls with the s3pe command line; Go module on net/http). The Python box points into the Rust box. All four point down into one band, the shared specification: resolve the key, SigV4 signing, retries, integrity checks, one log line. The band points down to the object store: s3.pe.gov.br, a Garage server with path-style URLs and buckets such as iaempe and horizonte-fiscal, or any S3 store.</desc>
   <defs>
-    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
-      <path d="M0,0 L10,5 L0,10 z" fill="#56648a"/>
+    <marker id="arrow" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse">
+      <path d="M0,1.5 L10,5 L0,8.5 z" fill="#56648a"/>
     </marker>
     <style>
       .box { fill: #ffffff; stroke: #c3cde6; stroke-width: 1.5; rx: 14; }

@@ -57,13 +57,14 @@
   section.alt { background: var(--bg-soft); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
   h2 { font-size: clamp(1.6rem, 3.4vw, 2.2rem); letter-spacing: -.02em; margin: 0 0 8px; }
   .sub { color: var(--muted); margin: 0 0 30px; max-width: 62ch; }
-  .grid { display: grid; gap: 18px; } .grid.f3 { grid-template-columns: repeat(3, 1fr); } .grid.f2 { grid-template-columns: repeat(2, 1fr); } .grid.f4 { grid-template-columns: repeat(4, 1fr); }
+  .grid { display: grid; gap: 18px; } .grid.f3 { grid-template-columns: repeat(3, 1fr); } .grid.f2 { grid-template-columns: repeat(2, 1fr); } .grid.f4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
   @media (max-width: 860px) { .grid.f3, .grid.f2, .grid.f4 { grid-template-columns: 1fr; } }
-  .card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 22px; transition: transform .14s ease, box-shadow .14s ease, border-color .14s ease; }
+  .card { min-width: 0; background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 22px; transition: transform .14s ease, box-shadow .14s ease, border-color .14s ease; }
   .card:hover { transform: translateY(-3px); box-shadow: var(--shadow); border-color: color-mix(in srgb, var(--brand) 40%, var(--border)); }
   .card .ic { font-size: 1.5rem; } .card h3 { margin: 12px 0 6px; font-size: 1.1rem; letter-spacing: -.01em; } .card p { margin: 0; color: var(--muted); font-size: .96rem; }
   .card .links { margin-top: 12px; display: flex; gap: 14px; flex-wrap: wrap; font-weight: 700; font-size: .9rem; }
-  .card pre { padding: 12px 14px; margin-top: 12px; background: var(--code-bg); border-radius: 10px; }
+  .card pre { padding: 12px 14px; margin-top: 12px; background: var(--code-bg); border-radius: 10px; overflow-x: auto; }
+  .card pre code { white-space: pre; }
   .panel { background: var(--code-bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 6px; }
   .panel h4 { margin: 10px 14px 0; color: #7f8bb0; font: 700 .8rem ui-monospace, monospace; text-transform: uppercase; letter-spacing: .08em; }
   .note { color: var(--muted); font-size: .9rem; margin-top: 10px; }
