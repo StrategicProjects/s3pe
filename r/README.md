@@ -39,7 +39,7 @@ list_s3("data/")
 
 The same package exists for
 [Python](https://pypi.org/project/s3pe/),
-[Rust](https://crates.io/crates/s3pe) (with a command line) and
+[Rust](https://docs.rs/s3pe) (with a command line) and
 [Go](https://pkg.go.dev/github.com/StrategicProjects/s3pe), all in the
 [same repository](https://github.com/StrategicProjects/s3pe), with the
 same verbs and the same behaviour.

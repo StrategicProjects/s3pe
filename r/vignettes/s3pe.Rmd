@@ -42,7 +42,7 @@ explicitly, for another store or another key:
 library(s3pe)
 s3_config()
 
-cfg <- s3_config(endpoint = "https://s3.other.org", bucket = "archive",
+cfg <- s3_config(endpoint = "https://s3.example.org", bucket = "archive",
                  access_key = Sys.getenv("ARCHIVE_KEY"),
                  secret_key = Sys.getenv("ARCHIVE_SECRET"))
 ```
