@@ -27,7 +27,7 @@ Put the endpoint and the key pair in `~/.Renviron` and restart R.
 `S3PE_BUCKET` is the bucket used when you do not say which one.
 
 ```
-S3PE_ENDPOINT=https://s3.example.org
+S3PE_ENDPOINT=https://example.org
 AWS_ACCESS_KEY_ID=...
 AWS_SECRET_ACCESS_KEY=...
 S3PE_BUCKET=my-bucket
@@ -42,7 +42,7 @@ explicitly, for another store or another key:
 library(s3pe)
 s3_config()
 
-cfg <- s3_config(endpoint = "https://s3.example.org", bucket = "archive",
+cfg <- s3_config(endpoint = "https://example.org", bucket = "archive",
                  access_key = Sys.getenv("ARCHIVE_KEY"),
                  secret_key = Sys.getenv("ARCHIVE_SECRET"))
 ```
