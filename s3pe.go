@@ -42,7 +42,7 @@ const (
 	// MaxPresignSecs is the longest validity of a pre-signed URL (seven days).
 	MaxPresignSecs int64 = 7 * 24 * 3600
 
-	version   = "0.3.0"
+	version   = "0.3.1"
 	userAgent = "s3pe-go/" + version
 )
 

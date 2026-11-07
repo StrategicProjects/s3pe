@@ -1,3 +1,8 @@
+# s3pe 0.3.1 (development version)
+
+* `DESCRIPTION`: file formats are no longer single-quoted (CRAN's quoting
+  rule applies to package, software and API names only).
+
 # s3pe 0.3.0
 
 * Multipart upload: `write_s3()` and `upload_s3()` send bodies larger than

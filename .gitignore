@@ -25,3 +25,4 @@ site/python/api/
 .DS_Store
 CLAUDE.md
 .claude/
+/s3pe_*.tar.gz

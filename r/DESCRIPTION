@@ -1,6 +1,6 @@
 Package: s3pe
 Title: A Small, Dependable Client for S3 Object Stores
-Version: 0.3.0
+Version: 0.3.1
 Authors@R: c(
     person("André", "Leite", email = "leite@castlab.org", role = c("aut", "cre"),
            comment = c(ORCID = "0000-0002-4718-9766")),
@@ -19,7 +19,7 @@ Authors@R: c(
 Description: Read and write data on any S3-compatible object store
     ('AWS S3', 'MinIO', 'Garage', 'Ceph', ...). read_s3() and write_s3()
     move data frames, lists and files, with the format chosen by the
-    key's extension ('CSV', 'JSON', 'Parquet', 'RDS', 'GeoJSON'); list,
+    key's extension (CSV, JSON, Parquet, RDS, GeoJSON); list,
     inspect and delete objects with the same small vocabulary. Requests
     are signed with AWS Signature Version 4 over the real hash of the
     payload, transient failures are retried with exponential backoff, and

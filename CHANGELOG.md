@@ -3,6 +3,13 @@
 All four editions (Rust crate, Python package, R package, Go module) share
 one version and this file.
 
+## 0.3.1 — unreleased
+
+- R: `DESCRIPTION` follows CRAN's quoting rule — single quotes only around
+  package, software and API names ('AWS S3', 'MinIO', …), none around file
+  formats (CSV, JSON, Parquet, RDS, GeoJSON). Asked by the CRAN reviewer on
+  accepting 0.3.0 (2026-11-07).
+
 ## 0.3.0 — 2026-10-24
 
 - Multipart upload, automatic above 64 MiB (16 MiB parts, 4 in parallel,
