@@ -79,7 +79,7 @@
           <a href="https://github.com/StrategicProjects/s3pe/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/StrategicProjects/s3pe/actions/workflows/ci.yml/badge.svg"></a>
           <a href="https://github.com/StrategicProjects/s3pe/blob/main/LICENSE"><img alt="License MIT" src="https://img.shields.io/badge/license-MIT-blue.svg"></a>
           <a href="https://doi.org/10.5281/zenodo.23606939"><img alt="DOI" src="https://zenodo.org/badge/DOI/10.5281/zenodo.23606939.svg"></a>
-          <img alt="Python 3.9+" src="https://img.shields.io/badge/python-3.9%2B-informational.svg">
+          <img alt="Python 3.10+" src="https://img.shields.io/badge/python-3.10%2B-informational.svg">
         </div>
         <div class="cta">
           <a class="btn primary" href="#install">Get started →</a>
@@ -112,7 +112,7 @@ s3pe.<span class="c-cmd">write_s3</span>(df, <span class="c-str">"s3://my-bucket
       <p class="sub">A client that moves the files a pipeline depends on has one job: either the bytes arrived, or you hear about it. Everything here serves that.</p>
       <div class="grid f3">
         <div class="card"><div class="ic">🗂️</div><h3>Formats by extension</h3><p><code>.json</code> → dict, <code>.csv</code>/<code>.csv.gz</code>/<code>.tsv</code>/<code>.parquet</code>/<code>.xlsx</code> → DataFrame, text files → str, anything else → bytes. <code>format=</code> overrides; extra arguments go to pandas.</p></div>
-        <div class="card"><div class="ic">🦀</div><h3>A Rust core</h3><p>Signing, retries and checks happen in the s3pe crate; the GIL is released during transfers. Wheels for Linux (x86_64, aarch64), macOS and Windows, Python 3.9 or later.</p></div>
+        <div class="card"><div class="ic">🦀</div><h3>A Rust core</h3><p>Signing, retries and checks happen in the s3pe crate; the GIL is released during transfers. Wheels for Linux (x86_64, aarch64), macOS and Windows, Python 3.10 or later.</p></div>
         <div class="card"><div class="ic">🔏</div><h3>Signed the way every store accepts</h3><p>AWS Signature V4 over the real SHA-256 of the body. No unsigned payloads, no <code>aws-chunked</code> trailers (which some stores reject), path-style URLs.</p></div>
         <div class="card"><div class="ic">🔁</div><h3>Retries that know when to stop</h3><p>Connection failures and HTTP 429/500/502/503/504: three tries, 1 s then 2 s. Never on other 4xx.</p></div>
         <div class="card"><div class="ic">✅</div><h3>Every byte accounted for</h3><p>ETag against the local MD5 after a PUT; Content-Length and MD5 after a GET. Downloads land in a <code>.s3pe-part</code> file and are renamed when complete.</p></div>
@@ -164,7 +164,7 @@ s3pe.<span class="c-cmd">write_s3</span>(df, <span class="c-str">"s3://my-bucket
   <section id="install">
     <div class="wrap">
       <h2>Install &amp; run</h2>
-      <p class="sub">Python 3.9 or later; pandas and pyarrow only for tables. Changes between versions in the <a href="https://github.com/StrategicProjects/s3pe/blob/main/CHANGELOG.md">changelog</a>.</p>
+      <p class="sub">Python 3.10 or later; pandas and pyarrow only for tables. Changes between versions in the <a href="https://github.com/StrategicProjects/s3pe/blob/main/CHANGELOG.md">changelog</a>.</p>
       <div class="panel" style="margin-bottom:18px">
 <pre><code><span class="c-prompt">$</span> <span class="c-cmd">pip</span> install s3pe              <span class="c-cmt"># bytes, str, dict/list and files</span>
 <span class="c-prompt">$</span> <span class="c-cmd">pip</span> install <span class="c-str">"s3pe[pandas]"</span>     <span class="c-cmt"># also CSV, Parquet and Excel as DataFrames</span></code></pre>

@@ -14,7 +14,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-24.04, macos-latest, windows-latest]
+        os: [ubuntu-latest, macos-latest, windows-latest]
     defaults:
       run:
         working-directory: rust
@@ -35,7 +35,7 @@ jobs:
 
   rust-msrv:
     name: rust (1.85)
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     defaults:
       run:
         working-directory: rust
@@ -50,8 +50,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-24.04, macos-latest, windows-latest]
-        python: ["3.9", "3.13"]
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        python: ["3.10", "3.13"]
     defaults:
       run:
         working-directory: python
@@ -74,7 +74,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-24.04, macos-latest, windows-latest]
+        os: [ubuntu-latest, macos-latest, windows-latest]
         go: ["1.22", "stable"]
         exclude:
           # Go 1.22 binaries abort on the current macOS runner ("missing LC_UUID load command")
@@ -85,12 +85,12 @@ jobs:
         with:
           go-version: ${{ matrix.go }}
       - name: Format
-        if: matrix.os == 'ubuntu-24.04'
+        if: matrix.os == 'ubuntu-latest'
         run: test -z "$(gofmt -l .)"
       - run: go vet ./...
       - run: go test ./...
       - name: No dependencies
-        if: matrix.os == 'ubuntu-24.04'
+        if: matrix.os == 'ubuntu-latest'
         run: "! grep -q '^require' go.mod"
 
   r:
@@ -102,9 +102,9 @@ jobs:
         config:
           - { os: macos-latest, r: release }
           - { os: windows-latest, r: release }
-          - { os: ubuntu-24.04, r: devel, http-user-agent: release }
-          - { os: ubuntu-24.04, r: release }
-          - { os: ubuntu-24.04, r: oldrel-1 }
+          - { os: ubuntu-latest, r: devel, http-user-agent: release }
+          - { os: ubuntu-latest, r: release }
+          - { os: ubuntu-latest, r: oldrel-1 }
     env:
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
       R_KEEP_PKG_SOURCE: yes

@@ -9,6 +9,8 @@ one version and this file.
   package, software and API names ('AWS S3', 'MinIO', …), none around file
   formats (CSV, JSON, Parquet, RDS, GeoJSON). Asked by the CRAN reviewer on
   accepting 0.3.0 (2026-11-07).
+- Python: the package now requires Python 3.10 or later (wheels are
+  `abi3-py310`); 3.9 reached end of life in October 2025.
 
 ## 0.3.0 — 2026-10-24
 

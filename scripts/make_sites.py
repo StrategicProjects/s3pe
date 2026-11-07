@@ -192,7 +192,7 @@ s3, _ = s3pe.<span class="c-cmd">New</span>(s3pe.<span class="c-ty">Config</span
                 (GH + "/actions/workflows/ci.yml", "CI", GH + "/actions/workflows/ci.yml/badge.svg"),
                 (GH + "/blob/main/LICENSE", "License MIT", "https://img.shields.io/badge/license-MIT-blue.svg"),
                 ("https://doi.org/10.5281/zenodo.23606939", "DOI", "https://zenodo.org/badge/DOI/10.5281/zenodo.23606939.svg"),
-                (None, "Python 3.9+", "https://img.shields.io/badge/python-3.9%2B-informational.svg")],
+                (None, "Python 3.10+", "https://img.shields.io/badge/python-3.10%2B-informational.svg")],
         api="api/", api_label="API reference", api_ext=None,
         term_title="analysis.py", term="""<span class="c-kw">import</span> s3pe
 
@@ -209,7 +209,7 @@ s3pe.<span class="c-cmd">write_s3</span>(df, <span class="c-str">"s3://my-bucket
     print(o.size, o.key)""",
         features=[
             ("🗂️", "Formats by extension", "<code>.json</code> → dict, <code>.csv</code>/<code>.csv.gz</code>/<code>.tsv</code>/<code>.parquet</code>/<code>.xlsx</code> → DataFrame, text files → str, anything else → bytes. <code>format=</code> overrides; extra arguments go to pandas."),
-            ("🦀", "A Rust core", "Signing, retries and checks happen in the s3pe crate; the GIL is released during transfers. Wheels for Linux (x86_64, aarch64), macOS and Windows, Python 3.9 or later."),
+            ("🦀", "A Rust core", "Signing, retries and checks happen in the s3pe crate; the GIL is released during transfers. Wheels for Linux (x86_64, aarch64), macOS and Windows, Python 3.10 or later."),
             ("🔏", "Signed the way every store accepts", "AWS Signature V4 over the real SHA-256 of the body. No unsigned payloads, no <code>aws-chunked</code> trailers (which some stores reject), path-style URLs."),
             ("🔁", "Retries that know when to stop", "Connection failures and HTTP 429/500/502/503/504: three tries, 1 s then 2 s. Never on other 4xx."),
             ("✅", "Every byte accounted for", "ETag against the local MD5 after a PUT; Content-Length and MD5 after a GET. Downloads land in a <code>.s3pe-part</code> file and are renamed when complete."),
@@ -244,7 +244,7 @@ raw = s3pe.<span class="c-cmd">read_s3</span>(<span class="c-str">"x.csv"</span>
 df  = s3pe.<span class="c-cmd">read_s3</span>(<span class="c-str">"x.csv"</span>, bucket=<span class="c-str">"b"</span>, sep=<span class="c-str">";"</span>, dtype=str)
 s3pe.<span class="c-cmd">write_s3</span>({<span class="c-str">"ok"</span>: <span class="c-kw">True</span>}, <span class="c-str">"s3://b/manifest.json"</span>)
 s3pe.<span class="c-cmd">write_s3</span>(df, <span class="c-str">"s3://b/series.csv.gz"</span>)   <span class="c-cmt"># gzipped on the way</span>""")],
-        install_note="Python 3.9 or later; pandas and pyarrow only for tables. Changes between versions in the <a href=\"" + GH + "/blob/main/CHANGELOG.md\">changelog</a>.",
+        install_note="Python 3.10 or later; pandas and pyarrow only for tables. Changes between versions in the <a href=\"" + GH + "/blob/main/CHANGELOG.md\">changelog</a>.",
         arch_text="The Python package is a thin layer: formats and logging in Python, everything on the wire in the Rust crate through PyO3. R and Go reimplement the same specification; the four signers reproduce the AWS documentation vector. One repository, one version, one <a href=\"" + GH + "/blob/main/DESIGN.md\">DESIGN.md</a>.",
         family=[("R", "../r/", "install.packages(\"s3pe\")"), ("Rust", "../rust/", "cargo add s3pe"), ("Go", "../go/", "go get github.com/StrategicProjects/s3pe")],
     ),

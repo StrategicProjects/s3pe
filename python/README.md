@@ -22,7 +22,7 @@ pip install "s3pe[pandas]"  # also CSV, Parquet and Excel as DataFrames
 ```
 
 Wheels for Linux (x86_64, aarch64), macOS (Intel, Apple silicon) and
-Windows; Python 3.9 or later.
+Windows; Python 3.10 or later.
 
 ## Use
 

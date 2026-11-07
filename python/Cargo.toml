@@ -13,7 +13,7 @@ crate-type = ["cdylib"]
 
 [dependencies]
 s3pe = { path = "../rust", default-features = false }
-pyo3 = { version = "0.30", features = ["abi3-py39"] }
+pyo3 = { version = "0.30", features = ["abi3-py310"] }
 
 [profile.release]
 lto = "fat"
